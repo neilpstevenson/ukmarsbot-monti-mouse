@@ -1,5 +1,8 @@
 #include "defaults.h"
 #include "ukmarsbot-pins.h"
+
+int basespeed = MIN_BASE_SPEED; //Base speed (constant)
+
 #include "pid.h"
 #include "debounce.h"
 
@@ -17,10 +20,9 @@ int posn = 0; // if on line or off it and which side
 int startStopCount = 0;
 
 //Motor variables
-int basespeed = BASE_SPEED; //Base speed (constant)
-//int turn = 25;  // Max turn
 int rightspeed = 0; //Right motor speed
 int leftspeed = 0; //Left motor speed
+const int SLOWDOWN_TIME = 80000/basespeed/SLOWDOWN_SPEED_RATIO;
 
 // Steering
 float pidInput = 0.0;
@@ -219,9 +221,20 @@ void setup()
 
 void loop() 
 {
+  // Get the base speed from the DIP switches
+ functionswitch(); // read function switch value after button released
+ basespeed = fnswvalue * 16;
+ if(basespeed < MIN_BASE_SPEED)
+  basespeed = MIN_BASE_SPEED;
+
+ Serial.print("Running at ");
+ Serial.println(basespeed);
+  
  buttonwait(); // wait for function button to be pressed
  functionswitch(); // read function switch value after button released
 // if (fnswvalue == 0) 
   linefollow(); // line follower routine
 // if (fnswvalue == 1) phototest();
+
+
 }
