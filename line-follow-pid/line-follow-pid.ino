@@ -114,10 +114,11 @@ void batterycheck()
 
 void photoread()
 {
- // read both line sensors
+ // read both line sensors & start/stop sensor
  lfrontsens = analogRead(lfront);
  rfrontsens = analogRead(rfront);
- 
+ rsidesens = analogRead(rside);
+
  // light the right hand sensor LED if white line seen by left sensor
  if (rfrontsens < sensorthreshold)
  {
@@ -137,10 +138,19 @@ void photoread()
   digitalWrite (sensorLED2, LOW);
  }
 
+#ifdef DEBUG_SENS
+ Serial.print(lfrontsens);
+ Serial.print("/");
+ Serial.print(rfrontsens);
+ Serial.print(" ss=");
+ Serial.println(rsidesens);
+#endif
+ 
  // Start/Stop check
- if(startFinish.isTriggered(analogRead(rside)))
+ if(startFinish.isTriggered(rsidesens))
  {
     startStopCount++;
+    Serial.println("triggered");
  }
 }
 
@@ -156,6 +166,9 @@ void linefollow()
   
   digitalWrite(trigger, HIGH);  // Sensor illumination LEDs
 
+  unsigned long int startTime = millis();
+  unsigned long int count = 0;
+  
   while(startStopCount < START_STOP_COUNT)
   {
     photoread();
@@ -166,14 +179,31 @@ void linefollow()
     int turn = (int)steeringPID.compute();
 
     // Set the motors to the default speed +/- turn
-    rightspeed = basespeed + turn; //
-    leftspeed = basespeed - turn; //
-    analogWrite(rmotorPWM, rightspeed); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed); // set left motor speed
+    if(turn > 0)
+    {
+      //rightspeed = basespeed + (turn*2/3);
+      rightspeed = basespeed + turn;
+      //rightspeed = basespeed;
+      leftspeed = basespeed - turn;
+      //leftspeed = basespeed - (turn*2/3);
+    }
+    else
+    {
+      rightspeed = basespeed + turn;
+      //rightspeed = basespeed + (turn*2/3);
+      //leftspeed = basespeed;
+      leftspeed = basespeed - turn;
+      //leftspeed = basespeed - (turn*2/3);
+    }
+    analogWrite(rmotorPWM, rightspeed >= 0 ? rightspeed : 0); // set right motor speed
+    analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
 
-   // delay(3);
+    count++;
+    delay(3);
   }
-  
+
+  unsigned long int endTime = millis();
+
   digitalWrite(LED13, LOW); // LED off
   
   // Slowdown sequence
@@ -194,6 +224,10 @@ void linefollow()
   }
   
   stopmotors();
+
+  Serial.print("Time mS: "); Serial.println(endTime-startTime);
+  Serial.print("Loop: "); Serial.print(count);
+  Serial.print(" ("); Serial.print(count/((endTime-startTime)/1000.0)); Serial.println("/sec)"); 
   
   // pause to see led off
   delay(500);
@@ -222,17 +256,16 @@ void setup()
 void loop() 
 {
   // Get the base speed from the DIP switches
- functionswitch(); // read function switch value after button released
- basespeed = fnswvalue * 16;
- if(basespeed < MIN_BASE_SPEED)
-  basespeed = MIN_BASE_SPEED;
+  buttonwait(); // wait for function button to be pressed
+  functionswitch(); // read function switch value after button released
+  basespeed = fnswvalue * 16;
+  if(basespeed < MIN_BASE_SPEED)
+    basespeed = MIN_BASE_SPEED;
 
- Serial.print("Running at ");
- Serial.println(basespeed);
+  Serial.print("Running at ");
+  Serial.println(basespeed);
   
- buttonwait(); // wait for function button to be pressed
- functionswitch(); // read function switch value after button released
-// if (fnswvalue == 0) 
+ // if (fnswvalue == 0) 
   linefollow(); // line follower routine
 // if (fnswvalue == 1) phototest();
 
