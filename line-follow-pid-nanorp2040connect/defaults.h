@@ -12,7 +12,7 @@ const float PID_Ki = 0.0;
 const float PID_Kd = 0.02;
 
 // Marker thresholds
-const int markerLowThreshold = 150;
-const int markerHighThreshold = 200;
+const int markerLowThreshold = 280;
+const int markerHighThreshold = markerLowThreshold+20;
 
 const int sensorthreshold = 300; // LED illumination threshold
