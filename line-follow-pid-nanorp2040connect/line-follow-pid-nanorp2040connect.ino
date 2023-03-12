@@ -30,7 +30,11 @@ float pidSetpoint = 0.0;
 PID steeringPID(PID_Kp, PID_Ki, PID_Kd, &pidInput, &pidSetpoint);
 
 // Markers
+#ifdef SENSOR_POLAIRTY_TRUE
+Debounce startFinish(markerLowThreshold, markerHighThreshold, true);
+#else
 Debounce startFinish(markerLowThreshold, markerHighThreshold, false);
+#endif
 int startFinishCount = 0;
 
 
@@ -164,7 +168,7 @@ void linefollow()
   analogWrite(rmotorPWM, rightspeed); // set right motor speed
   analogWrite(lmotorPWM, leftspeed); // set left motor speed
   
-  digitalWrite(trigger, HIGH);  // Sensor illumination LEDs
+  digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
 
   unsigned long int startTime = millis();
   unsigned long int count = 0;
@@ -172,7 +176,11 @@ void linefollow()
   while(startStopCount < START_STOP_COUNT)
   {
     photoread();
+#ifdef SENSOR_POLAIRTY_TRUE
+    sensdiff = rfrontsens - lfrontsens;
+#else
     sensdiff = lfrontsens - rfrontsens;
+#endif
 
     // Push through PID controller
     pidInput = sensdiff;
@@ -215,7 +223,11 @@ void linefollow()
   for(int i = 0; i < SLOWDOWN_TIME; i++)
   {
     photoread();
+#ifdef SENSOR_POLAIRTY_TRUE
+    sensdiff = rfrontsens - lfrontsens;
+#else
     sensdiff = lfrontsens - rfrontsens;
+#endif
 
     // Push through PID controller
     pidInput = sensdiff;
@@ -260,6 +272,51 @@ void setup()
   stopmotors(); // switch off the motors
 }
 
+void sensorTest()
+{
+  while(1)
+  {
+    // read the value from the sensor:
+    int a0valu = analogRead(lside);    
+    int a1valu = analogRead(lfront);    
+    int a2valu = analogRead(rfront);    
+    int a3valu = analogRead(rside);    
+  
+    digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
+    delay(1);
+    
+    // read the value from the sensor:
+    int a0val = analogRead(lside);    
+    int a1val = analogRead(lfront);    
+    int a2val = analogRead(rfront);    
+    int a3val = analogRead(rside);    
+
+    // Read function switch
+    functionswitch();
+
+    Serial.print(a0val);
+    Serial.print(",");
+    Serial.print(a0valu);
+    Serial.print(",");
+    Serial.print(a1val);
+    Serial.print(",");
+    Serial.print(a1valu);
+    Serial.print(",");
+    Serial.print(a2val);
+    Serial.print(",");
+    Serial.print(a2valu);
+    Serial.print(",");
+    Serial.print(a3val);
+    Serial.print(",");
+    Serial.print(a3valu);
+    Serial.print(",");
+    Serial.println(fnswvalue);
+
+    digitalWrite(trigger, LOW);  // Sensor illumination LEDs off
+    delay(20); 
+  }
+}
+
 void loop() 
 {
   // Get the base speed from the DIP switches
@@ -275,9 +332,11 @@ void loop()
   Serial.print("Running at ");
   Serial.println(basespeed);
   
- // if (fnswvalue == 0) 
-  linefollow(); // line follower routine
-// if (fnswvalue == 1) phototest();
+  if (fnswvalue > 0) 
+    linefollow(); // line follower routine
+// if (fnswvalue == 1) 
+  else
+    sensorTest();
 
 
 }

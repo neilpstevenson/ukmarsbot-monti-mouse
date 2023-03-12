@@ -1,8 +1,8 @@
 // Input pins:
-const int rside = A0; // left side sensor input (radius)
-const int rfront = A1; //front left line sensor input
-const int lfront = A2; //front right left sensor input
-const int lside = A3; // right side sensor input (start/stop)
+const int rside = A0; // right side sensor input (start/stop)
+const int rfront = A1; //front right line sensor input
+const int lfront = A2; //front left left sensor input
+const int lside = A3; // right side sensor input (radius)
 #define sens1 A4 // unassigned sensor input 1
 #define sens2 A5 // unassigned sensor input 2
 #define fourwayswitch A6 // input from function switch
@@ -22,3 +22,5 @@ const int rmotorPWM = 10; //Right motor PWN pin
 const int sensorLED2 = 11; // 2nd diagnostic LED on sensor board
 const int trigger = 12; // trigger for sensor LEDs
 const int LED13 = 13; // ext LED Red
+
+#define SENSOR_POLAIRTY_TRUE  // If WHITE is a higher value (i.e. Neil's compact sensor, not the UKMARSBOT sensors)

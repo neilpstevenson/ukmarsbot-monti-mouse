@@ -1,6 +1,6 @@
 const int MIN_BASE_SPEED = 40; //100;
 const int MAX_BASE_SPEED = 127;
-const int START_STOP_COUNT = 4;
+const int START_STOP_COUNT = 4; //4 for track, 2 for drag
 const int SLOWDOWN_SPEED_RATIO = 2; // Half speed
 
 // PID values
@@ -12,7 +12,7 @@ const float PID_Ki = 0.0;
 const float PID_Kd = 0.02;
 
 // Marker thresholds
-const int markerLowThreshold = 280;
+const int markerLowThreshold = 700;
 const int markerHighThreshold = markerLowThreshold+20;
 
-const int sensorthreshold = 300; // LED illumination threshold
+const int sensorthreshold = 700; // LED illumination threshold
