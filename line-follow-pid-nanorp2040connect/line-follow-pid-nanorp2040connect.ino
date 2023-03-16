@@ -122,6 +122,7 @@ void photoread()
  lfrontsens = analogRead(lfront);
  rfrontsens = analogRead(rfront);
  rsidesens = analogRead(rside);
+ lsidesens = analogRead(lside);
 
  // light the right hand sensor LED if white line seen by left sensor
  if (rfrontsens < sensorthreshold)
@@ -160,20 +161,38 @@ void photoread()
 
 void linefollow() 
 {
-  startStopCount = 0;
+  unsigned long int count = 0;
+  int endStopLineCount = START_STOP_COUNT_DEFAULT;
+
   rightspeed = basespeed;
   leftspeed = basespeed;
   digitalWrite(rmotorDIR, HIGH); // set right motor forward
   digitalWrite(lmotorDIR, LOW); // set left motor forward
-  analogWrite(rmotorPWM, rightspeed); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed); // set left motor speed
   
   digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
 
+
+  // Wait for marker to go off, as alternative to dragster start 
+  // tirgger
+  photoread();
+  Serial.print("lsidesens="); Serial.println(lsidesens);
+  while(lsidesens > markerHighThreshold)
+  {
+    delay(10);
+    photoread();
+    Serial.print("lsidesens="); Serial.println(lsidesens);
+
+    // Assume a Dragster course
+    endStopLineCount = START_STOP_COUNT_DRAGSTER;
+    steeringPID.set_tunings(PID_Kp_DRAGSTER, PID_Ki_DRAGSTER, PID_Kd_DRAGSTER);
+  }
+
+  startStopCount = 0;
   unsigned long int startTime = millis();
-  unsigned long int count = 0;
-  
-  while(startStopCount < START_STOP_COUNT)
+  analogWrite(rmotorPWM, rightspeed); // set right motor speed
+  analogWrite(lmotorPWM, leftspeed); // set left motor speed
+
+  while(startStopCount < endStopLineCount)
   {
     photoread();
 #ifdef SENSOR_POLAIRTY_TRUE
@@ -322,7 +341,7 @@ void loop()
   // Get the base speed from the DIP switches
   buttonwait(); // wait for function button to be pressed
   functionswitch(); // read function switch value after button released
-  basespeed = fnswvalue * 16;
+  basespeed = fnswvalue * 17;
   if(basespeed < MIN_BASE_SPEED)
     basespeed = MIN_BASE_SPEED;
 
