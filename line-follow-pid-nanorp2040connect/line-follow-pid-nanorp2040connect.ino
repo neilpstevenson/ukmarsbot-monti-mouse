@@ -31,6 +31,7 @@ PID steeringPID(PID_Kp, PID_Ki, PID_Kd, &pidInput, &pidSetpoint);
 
 // Markers
 #ifdef SENSOR_POLAIRTY_TRUE
+// New sensor board
 Debounce startFinish(markerLowThreshold, markerHighThreshold, true);
 #else
 Debounce startFinish(markerLowThreshold, markerHighThreshold, false);
@@ -176,7 +177,11 @@ void linefollow()
   // tirgger
   photoread();
   Serial.print("lsidesens="); Serial.println(lsidesens);
+#ifdef SENSOR_POLAIRTY_TRUE
   while(lsidesens > markerHighThreshold)
+#else
+  while(lsidesens < markerHighThreshold)
+#endif
   {
     delay(10);
     photoread();

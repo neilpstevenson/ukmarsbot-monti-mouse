@@ -8,16 +8,16 @@ const int SLOWDOWN_SPEED_RATIO = 2; // Half speed
 const float LOOP_INTERVAL = 0.003;  // 3mS
 const float LOOP_FREQUENCY = 1/LOOP_INTERVAL;  // Hz
 #define MAX_MOTOR_VOLTS (basespeed > MAX_BASE_SPEED ? MAX_BASE_SPEED : basespeed)
-const float PID_Kp = 0.9;
+const float PID_Kp = 1.0;
 const float PID_Ki = 0.0;
-const float PID_Kd = 0.03;
+const float PID_Kd = 0.08;
 
 const float PID_Kp_DRAGSTER = 0.1;
 const float PID_Ki_DRAGSTER = 0.0;
 const float PID_Kd_DRAGSTER = 0.01;
 
 // Marker thresholds
-const int markerLowThreshold = 850; //700;
+const int markerLowThreshold = 850; //850; //700; // 250 for old full-size or half-size board
 const int markerHighThreshold = markerLowThreshold+20;
 
 const int sensorthreshold = 700; // LED illumination threshold
