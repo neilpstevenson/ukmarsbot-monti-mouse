@@ -1,6 +1,6 @@
 const int MIN_BASE_SPEED = 40; //100;
 const int MAX_BASE_SPEED = 127;
-const int START_STOP_COUNT_DEFAULT = 4; //4 for track, 2 for drag
+const int START_STOP_COUNT_DEFAULT = 2+2; //e.g. 8 for 2023 track (start, stop + no. of crosses), 2 for drag only
 const int START_STOP_COUNT_DRAGSTER = 2;
 const int SLOWDOWN_SPEED_RATIO = 2; // Half speed
 
@@ -17,7 +17,7 @@ const float PID_Ki_DRAGSTER = 0.0;
 const float PID_Kd_DRAGSTER = 0.01;
 
 // Marker thresholds
-const int markerLowThreshold = 850; //850; //700; // 250 for old full-size or half-size board
+const int markerLowThreshold = 250; //850; //700; // e.g. 250 for old full-size or half-size board, 850 for neil's new inverted board
 const int markerHighThreshold = markerLowThreshold+20;
 
-const int sensorthreshold = 700; // LED illumination threshold
+const int sensorthreshold = (markerLowThreshold + markerHighThreshold)/2; // LED illumination threshold

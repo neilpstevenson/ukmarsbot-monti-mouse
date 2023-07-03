@@ -23,4 +23,4 @@ const int sensorLED2 = 11; // 2nd diagnostic LED on sensor board
 const int trigger = 12; // trigger for sensor LEDs
 const int LED13 = 13; // ext LED Red
 
-#define SENSOR_POLAIRTY_TRUE 1 // If WHITE is a higher value (i.e. Neil's compact sensor, not the UKMARSBOT sensors)
+#define SENSOR_POLAIRTY_TRUE 0 // 1 = If WHITE is a higher value (i.e. Neil's compact sensor, not the UKMARSBOT sensors), otherwise 0

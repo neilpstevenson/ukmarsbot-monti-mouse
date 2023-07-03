@@ -30,7 +30,7 @@ float pidSetpoint = 0.0;
 PID steeringPID(PID_Kp, PID_Ki, PID_Kd, &pidInput, &pidSetpoint);
 
 // Markers
-#ifdef SENSOR_POLAIRTY_TRUE
+#if SENSOR_POLAIRTY_TRUE
 // New sensor board
 Debounce startFinish(markerLowThreshold, markerHighThreshold, true);
 #else
@@ -177,7 +177,7 @@ void linefollow()
   // tirgger
   photoread();
   Serial.print("lsidesens="); Serial.println(lsidesens);
-#ifdef SENSOR_POLAIRTY_TRUE
+#if SENSOR_POLAIRTY_TRUE
   while(lsidesens > markerHighThreshold)
 #else
   while(lsidesens < markerHighThreshold)
@@ -200,7 +200,7 @@ void linefollow()
   while(startStopCount < endStopLineCount)
   {
     photoread();
-#ifdef SENSOR_POLAIRTY_TRUE
+#if SENSOR_POLAIRTY_TRUE
     sensdiff = rfrontsens - lfrontsens;
 #else
     sensdiff = lfrontsens - rfrontsens;
@@ -243,11 +243,11 @@ void linefollow()
   digitalWrite(LED13, LOW); // LED off
   
   // Slowdown sequence
-  int SLOWDOWN_TIME = 22000/basespeed/SLOWDOWN_SPEED_RATIO;
+  int SLOWDOWN_TIME = 30000/basespeed/SLOWDOWN_SPEED_RATIO;
   for(int i = 0; i < SLOWDOWN_TIME; i++)
   {
     photoread();
-#ifdef SENSOR_POLAIRTY_TRUE
+#if SENSOR_POLAIRTY_TRUE
     sensdiff = rfrontsens - lfrontsens;
 #else
     sensdiff = lfrontsens - rfrontsens;

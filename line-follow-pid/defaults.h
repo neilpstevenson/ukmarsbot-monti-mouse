@@ -1,6 +1,6 @@
 const int MIN_BASE_SPEED = 40; //100;
 const int MAX_BASE_SPEED = 127;
-const int START_STOP_COUNT = 4;
+const int START_STOP_COUNT = 2+2; // Start+Stop + Number of crossings
 const int SLOWDOWN_SPEED_RATIO = 2; // Half speed
 
 // PID values
