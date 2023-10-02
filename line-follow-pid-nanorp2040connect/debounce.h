@@ -1,3 +1,5 @@
+#pragma once
+
 class Debounce
 {
   private:
@@ -28,26 +30,35 @@ class Debounce
         {
           // Done debouncing
           _debounceStartTime = 0;
+ //         Serial.println("debounce done");
         }
+//        else
+//          Serial.println("ignored");
       }
-      else if(_isHigh)
+      
+      if(!_debounceStartTime)
       {
-        if(newValue <= _lowThreshold)
+        if(_isHigh)
         {
-          _isHigh = false;
-          _debounceStartTime = micros();
-          // Newly low
-          return !_triggerOnHigh;
+          if(newValue <= _lowThreshold)
+          {
+            _isHigh = false;
+            _debounceStartTime = micros();
+            // Newly low
+//            Serial.println("gone low");
+            return !_triggerOnHigh;
+          }
         }
-      }
-      else
-      {
-        if(newValue >= _highThreshold)
+        else
         {
-          _isHigh = true;
-          _debounceStartTime = micros();
-          // Newly high
-          return _triggerOnHigh;
+          if(newValue >= _highThreshold)
+          {
+            _isHigh = true;
+            _debounceStartTime = micros();
+            // Newly high
+//            Serial.println("gone high");
+            return _triggerOnHigh;
+          }
         }
       }
       // No change

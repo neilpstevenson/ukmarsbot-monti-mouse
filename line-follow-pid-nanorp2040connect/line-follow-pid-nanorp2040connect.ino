@@ -6,6 +6,8 @@ int basespeed = MIN_BASE_SPEED; //Base speed (constant)
 
 #include "pid.h"
 #include "debounce.h"
+#include "quadrature.h"
+#include "pathRecorder.h"
 
 //Inputs
 int rfrontsens = 0; //Right front sensor value
@@ -19,25 +21,27 @@ int switchvoltage = 0; // analogue value coming back from reading function or 4 
 int fnswvalue = 0; // value (in range 0 to 16) of 4 way function switch
 int posn = 0; // if on line or off it and which side
 int startStopCount = 0;
+int radiusMarkerCount = 0;
 
 //Motor variables
 int rightspeed = 0; //Right motor speed
 int leftspeed = 0; //Left motor speed
 
-// Steering
-float pidInput = 0.0;
-float pidSetpoint = 0.0;
-PID steeringPID(PID_Kp, PID_Ki, PID_Kd, &pidInput, &pidSetpoint);
+// Encoders
+Quadrature_encoder<m1encoder2, m1encoder1> encoder_l;
+Quadrature_encoder<m2encoder2, m2encoder1> encoder_r;
+
+PathRecorder pathRecorder;
 
 // Markers
 #if SENSOR_POLAIRTY_TRUE
 // New sensor board
 Debounce startFinish(markerLowThreshold, markerHighThreshold, true);
+Debounce radiusMarker(markerLowThreshold, markerHighThreshold, true);
 #else
 Debounce startFinish(markerLowThreshold, markerHighThreshold, false);
+Debounce radiusMarker(markerLowThreshold, markerHighThreshold, false);
 #endif
-int startFinishCount = 0;
-
 
 int i=0; // loop counter
 
@@ -50,7 +54,14 @@ void buttonwait()
  { 
     // while button not pressed
     switchvoltage = analogRead(fourwayswitch);
+
+    //int start_pos_l = encoder_l.count();
+    //int start_pos_r = encoder_r.count();
+    //Serial.print(start_pos_l);
+    //Serial.print(",");
+    //Serial.println(start_pos_r);
  }
+ 
  digitalWrite(LED13, LOW); // LED off
  // Debounce time
  delay(20);
@@ -144,20 +155,18 @@ void photoread()
   digitalWrite (sensorLED2, LOW);
  }
 
+//#define DEBUG_SENS
 #ifdef DEBUG_SENS
+ Serial.print("SENS,");
+ Serial.print(lsidesens);
+ Serial.print(",");
  Serial.print(lfrontsens);
- Serial.print("/");
+ Serial.print(",");
  Serial.print(rfrontsens);
- Serial.print(" ss=");
+ Serial.print(",");
  Serial.println(rsidesens);
 #endif
  
- // Start/Stop check
- if(startFinish.isTriggered(rsidesens))
- {
-    startStopCount++;
-    Serial.println("triggered");
- }
 }
 
 void linefollow() 
@@ -176,7 +185,14 @@ void linefollow()
   // Wait for marker to go off, as alternative to dragster start 
   // tirgger
   photoread();
-  Serial.print("lsidesens="); Serial.println(lsidesens);
+
+  // Steering
+  float pidInput = 0.0;
+  float pidSetpoint = 0.0;
+  PID steeringPID(PID_Kp * basespeed, PID_Ki * basespeed, PID_Kd * basespeed, &pidInput, &pidSetpoint);
+
+  //Serial.print("lsidesens="); Serial.println(lsidesens);
+  
 #if SENSOR_POLAIRTY_TRUE
   while(lsidesens > markerHighThreshold)
 #else
@@ -185,7 +201,7 @@ void linefollow()
   {
     delay(10);
     photoread();
-    Serial.print("lsidesens="); Serial.println(lsidesens);
+    //Serial.print("lsidesens="); Serial.println(lsidesens);
 
     // Assume a Dragster course
     endStopLineCount = START_STOP_COUNT_DRAGSTER;
@@ -193,11 +209,18 @@ void linefollow()
   }
 
   startStopCount = 0;
+  radiusMarkerCount = 0;
+
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  pathRecorder.reset();
+
   unsigned long int startTime = millis();
   analogWrite(rmotorPWM, rightspeed); // set right motor speed
   analogWrite(lmotorPWM, leftspeed); // set left motor speed
 
-  while(startStopCount < endStopLineCount)
+  while(!pathRecorder.detectedEndMarker())
   {
     photoread();
 #if SENSOR_POLAIRTY_TRUE
@@ -209,6 +232,9 @@ void linefollow()
     // Push through PID controller
     pidInput = sensdiff;
     int turn = (int)steeringPID.compute();
+
+    // Detect and record any markers found 
+    pathRecorder.record(lsidesens, rsidesens, (int)(-encoder_l.count() * ENCODER_CALIBRATION), (int)(encoder_r.count() * ENCODER_CALIBRATION));
 
     // Set the motors to the default speed +/- turn
     if(turn > 0)
@@ -230,9 +256,9 @@ void linefollow()
     analogWrite(rmotorPWM, rightspeed >= 0 ? rightspeed : 0); // set right motor speed
     analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
     
-    Serial.print(leftspeed);
-    Serial.print(",");
-    Serial.println(rightspeed);
+    //Serial.print(leftspeed);
+    //Serial.print(",");
+    //Serial.println(rightspeed);
     
     count++;
     delay(3);
@@ -243,9 +269,12 @@ void linefollow()
   digitalWrite(LED13, LOW); // LED off
   
   // Slowdown sequence
-  int SLOWDOWN_TIME = 30000/basespeed/SLOWDOWN_SPEED_RATIO;
-  for(int i = 0; i < SLOWDOWN_TIME; i++)
+  int stopMarkerPos_r = encoder_r.count();
+  while(stopMarkerPos_r + STOP_DISTANCE > encoder_r.count())
   {
+//  int SLOWDOWN_TIME = 30000/basespeed/SLOWDOWN_SPEED_RATIO;
+//  for(int i = 0; i < SLOWDOWN_TIME; i++)
+//  {
     photoread();
 #if SENSOR_POLAIRTY_TRUE
     sensdiff = rfrontsens - lfrontsens;
@@ -268,10 +297,15 @@ void linefollow()
   
   stopmotors();
 
-  Serial.print("Time mS: "); Serial.println(endTime-startTime);
-  Serial.print("Loop: "); Serial.print(count);
-  Serial.print(" ("); Serial.print(count/((endTime-startTime)/1000.0)); Serial.println("/sec)"); 
-  
+  while(1)
+  {
+    Serial.print("Time mS: "); Serial.println(endTime-startTime);
+    Serial.print("Loop: "); Serial.print(count);
+    Serial.print(" ("); Serial.print(count/((endTime-startTime)/1000.0)); Serial.println("/sec)"); 
+    pathRecorder.printPath();
+    delay(2000);
+  }
+
   // pause to see led off
   delay(500);
 }
@@ -288,12 +322,16 @@ void setup()
   pinMode(sensorLED2, OUTPUT);
   pinMode(trigger, OUTPUT);
   pinMode(LED13, OUTPUT);
-  pinMode(m1encoder1, INPUT);
-  pinMode(m1encoder2, INPUT);
-  pinMode(m2encoder1, INPUT);
-  pinMode(m2encoder2, INPUT);
+  pinMode(2, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  pinMode(4, INPUT_PULLUP);
+  pinMode(5, INPUT_PULLUP);
   
   stopmotors(); // switch off the motors
+
+  encoder_l.begin(pull_direction::up, resolution::quarter);
+  encoder_r.begin(pull_direction::up, resolution::quarter);
+
 }
 
 void sensorTest()
@@ -355,7 +393,40 @@ void loop()
   Serial.println(batteryread);
   Serial.print("Running at ");
   Serial.println(basespeed);
-  
+
+  // Unit test sensors
+  #ifdef UNIT_TEST
+  delay(30);
+  Serial.print("delay\nhigh->");
+  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  Serial.print("low->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  delay(30);
+  Serial.print("delay\nhigh->");
+  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  Serial.print("low->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  Serial.print("high->");
+  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  Serial.print("low->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  delay(30);
+  Serial.print("delay\nlow->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  Serial.print("high->");
+  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  Serial.print("low->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  Serial.print("high->");
+  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  Serial.print("low->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  delay(30);
+  Serial.print("delay\nlow->");
+  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  delay(30);
+#endif
+
   if (fnswvalue > 0) 
     linefollow(); // line follower routine
 // if (fnswvalue == 1) 
