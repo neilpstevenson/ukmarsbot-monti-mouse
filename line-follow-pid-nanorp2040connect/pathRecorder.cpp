@@ -34,7 +34,7 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
   lastPositionLeft = positionLeft;
   lastPositionRight = positionRight;
 
-   if(startFinish.isTriggered(startStopMarkerReading))
+  if(startFinish.isTriggered(startStopMarkerReading))
   {
       // Could this be a cross-over?
       if(totalSegments > 1 && 
@@ -56,6 +56,7 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
         Serial.println(positionLeft);
       }
   }
+
   // Radius marker check
   if(radiusMarker.isTriggered(radiusMarkerReading))
   {
@@ -90,6 +91,7 @@ void PathRecorder::addSegment(SegmentDirection direction)
     segments[totalSegments].distanceLeft = 0;
     segments[totalSegments].distanceRight = 0;
     segments[totalSegments].direction = direction;
+    currentSegment = totalSegments;
     ++totalSegments;
   }
 }
@@ -110,7 +112,58 @@ void PathRecorder::adjustSegmentDistances()
       else
         segments[totalSegments-1].direction = (distanceLeft > distanceRight) ? rightTurn : leftTurn;
     }
+    Serial.print("Adjusted to ");
+    printDirection(segments[totalSegments-1].direction);
+    Serial.print(",");
+    Serial.print(distanceLeft);
+    Serial.print(",");
+    Serial.println(distanceRight);
   }
+}
+
+PathRecorder::SegmentDirection PathRecorder::getFirstSegment()
+{
+  currentSegment = 0;
+  if(!totalSegments)
+    return endMark;
+  else
+    return segments[0].direction;
+}
+
+PathRecorder::SegmentDirection PathRecorder::getNextSegment()
+{
+  if(currentSegment >= totalSegments-1)
+    return endMark;
+
+  return segments[++currentSegment].direction;
+}
+
+int PathRecorder::getSegmentDistance()
+{
+  if(currentSegment >= totalSegments)
+    return STOP_DISTANCE;
+
+  // Return the biggest of left/right
+  return segments[currentSegment].distanceLeft > segments[currentSegment].distanceRight ? segments[currentSegment].distanceLeft : segments[currentSegment].distanceRight;
+}
+
+int PathRecorder::getCurrentSegmentDistance()
+{
+  if(currentSegment >= totalSegments)
+    return STOP_DISTANCE;
+
+  // Return the biggest of left/right
+  return lastPositionLeft - segments[currentSegment].positionLeft > lastPositionRight - segments[currentSegment].positionRight ? 
+        lastPositionLeft - segments[currentSegment].positionLeft : 
+        lastPositionRight - segments[currentSegment].positionRight;
+}
+
+bool PathRecorder::isSegmentEndMarker()
+{
+   if(currentSegment >= totalSegments-1)
+    return true;
+
+  return segments[currentSegment].direction == endMark;
 }
 
 void PathRecorder::printPath()
@@ -124,38 +177,41 @@ void PathRecorder::printPath()
     Serial.print(segments[i].positionRight);   Serial.print(",");
     Serial.print(segments[i].distanceLeft);   Serial.print(",");
     Serial.print(segments[i].distanceRight);   Serial.print(",");
-    switch(segments[i].direction)
-    {
-      case startMark:
-        Serial.print("Start");   break;
-      case endMark:
-        Serial.print("End");   break;
-      case forward:
-        Serial.print("Fwd");   break;
-      case rightTurn:
-        Serial.print("Rght");   break;
-      case rightTurn180:
-        Serial.print("R180");   break;
-      case rightTurn270:
-        Serial.print("R270");   break;
-      case leftTurn:
-        Serial.print("Left");   break;
-      case leftTurn180:
-        Serial.print("L180");   break;
-      case leftTurn270:
-        Serial.print("L270");   break;
-      case crossOver:
-        Serial.print("Cros");   break;
-    }
+    printDirection(segments[i].direction);
     Serial.println();
   }
-
 }
+
+void PathRecorder::printDirection(PathRecorder::SegmentDirection direction)
+{
+  switch(direction)
+  {
+    case startMark:
+      Serial.print("Start");   break;
+    case endMark:
+      Serial.print("End");   break;
+    case forward:
+      Serial.print("Fwd");   break;
+    case rightTurn:
+      Serial.print("Right");   break;
+    case rightTurn180:
+      Serial.print("R180");   break;
+    case rightTurn270:
+      Serial.print("R270");   break;
+    case leftTurn:
+      Serial.print("Left");   break;
+    case leftTurn180:
+      Serial.print("L180");   break;
+    case leftTurn270:
+      Serial.print("L270");   break;
+    case crossOver:
+      Serial.print("Cross");   break;
+  }
+}
+
 bool PathRecorder::detectedEndMarker() const
 {
   return totalSegments > 1 && 
           segments[totalSegments-1].direction == endMark &&
           segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE < lastPositionLeft;
 }
-
-

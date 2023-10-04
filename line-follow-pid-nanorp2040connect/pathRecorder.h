@@ -1,10 +1,11 @@
+#pragma once
 #include "debounce.h"
 
 // Class to encapdulate the recording of a line-follower course
 // and facilitate faster replay using known contours
 class PathRecorder
 {
-private:
+public:
   typedef enum {
     startMark,
     endMark,
@@ -18,8 +19,6 @@ private:
     crossOver
   } SegmentDirection;
 
-  static const int MAX_SEGEMENTS = 100;
-
   typedef struct  
     {
       int positionLeft;
@@ -30,27 +29,41 @@ private:
       int turn;
     } Segment;
 
-    Segment segments[MAX_SEGEMENTS];
-    int totalSegments;
-    int currentSegment;
+private:
 
-    int lastPositionLeft;
-    int lastPositionRight;
-  
-    // Edge detection helpers
-    Debounce startFinish;
-    Debounce radiusMarker;
+  static const int MAX_SEGEMENTS = 100;
+  Segment segments[MAX_SEGEMENTS];
+  int totalSegments;
+  int currentSegment;
+
+  int lastPositionLeft;
+  int lastPositionRight;
+
+  // Edge detection helpers
+  Debounce startFinish;
+  Debounce radiusMarker;
 
   void addSegment(SegmentDirection direction);
   void adjustSegmentDistances();
-  
+
 public:
   PathRecorder();
 
+  // Recorder
   void reset();
   void record(int radiusMarkerReading, int startStopMarkerReading, int positionLeft, int positionRight);
   bool detectedEndMarker() const;
 
+  // Playback
+  SegmentDirection getFirstSegment();
+  SegmentDirection getNextSegment();
+  int getSegmentDistance();
+  int getCurrentSegmentDistance();  // during record only
+  bool isSegmentEndMarker();
+  int currentSegmentNumber() { return currentSegment; }
+
+  // Debug
   void printPath();
+  static void printDirection(SegmentDirection direction);
 
 };
