@@ -21,5 +21,5 @@ const int lmotorPWM = 8; //9; //Left motor PWN pin
 const int rmotorPWM = 10; //Right motor PWN pin
 const int sensorLED2 = 11; // 2nd diagnostic LED on sensor board
 const int trigger = 12; // trigger for sensor LEDs
-const int LED13 = 13; // ext LED Red
+const int indicatorLedBlue = 13; // ext LED (blue on MontiPi)
 

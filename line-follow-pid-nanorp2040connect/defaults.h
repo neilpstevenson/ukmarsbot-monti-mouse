@@ -4,17 +4,17 @@
 
 const int MIN_BASE_SPEED = 40; //100;
 const int MAX_BASE_SPEED = 127;
-//const int START_STOP_COUNT_DEFAULT = 2+2; //e.g. 8 for 2023 track (start, stop + no. of crosses), 2 for drag only
-//const int START_STOP_COUNT_DRAGSTER = 2;
-const int SLOWDOWN_SPEED_RATIO = 2; // Half speed
-const int FAST_FORWARD_SPEEDUP = 30; // Added to forward speed during straights
+const float SLOWDOWN_SPEED_RATIO = 0.7; // For segment after the end marker
+//const int FAST_FORWARD_SPEEDUP = 30; // Added to forward speed during straights
 
 const float ENCODER_CALIBRATION = 1.7;  // Counts to mm
 
 // Tolerances etc. all in mm
 const int CROSSOVER_TOLERANCE = 30;
-const int STRAIGHT_LINE_TOLERANCE = 90;
-const int CORNER_APPROACH_DISTANCE = 100;
+const int STRAIGHT_LINE_TOLERANCE = 4;
+const int SEGMENT_START_DEFERRED_DISTANCE = 30; // We get this much into a segment before recording the distance (allows for straightening up etc)
+const int ACCELERATION_DISTANCE = 60;
+const float CORNER_APPROACH_DISTANCE = 2.0; // Distance in mm * speed
 const int STOP_DISTANCE = 120 - CROSSOVER_TOLERANCE;
 
 // PID values

@@ -39,6 +39,9 @@ private:
   int lastPositionLeft;
   int lastPositionRight;
 
+  int lastSegmentDeferredPositionLeft;
+  int lastSegmentDeferredPositionRight;
+
   // Edge detection helpers
   Debounce startFinish;
   Debounce radiusMarker;
@@ -57,10 +60,12 @@ public:
   // Playback
   SegmentDirection getFirstSegment();
   SegmentDirection getNextSegment();
+  SegmentDirection peakNextSegment();
   int getSegmentDistance();
   int getCurrentSegmentDistance();  // during record only
   bool isSegmentEndMarker();
   int currentSegmentNumber() { return currentSegment; }
+  static bool isDirectionForward(SegmentDirection direction);
 
   // Debug
   void printPath();

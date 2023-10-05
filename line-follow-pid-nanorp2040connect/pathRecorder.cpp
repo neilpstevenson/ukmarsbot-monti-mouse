@@ -34,6 +34,15 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
   lastPositionLeft = positionLeft;
   lastPositionRight = positionRight;
 
+  if(getCurrentSegmentDistance() < SEGMENT_START_DEFERRED_DISTANCE)
+  {
+    // Adjust after we've got a bit into the segment (straight or bend)
+    lastSegmentDeferredPositionLeft = positionLeft;
+    lastSegmentDeferredPositionRight = positionRight;
+    //Serial.print("Distance adjusted at ");
+    //Serial.println(getCurrentSegmentDistance());
+  }
+
   if(startFinish.isTriggered(startStopMarkerReading))
   {
       // Could this be a cross-over?
@@ -53,7 +62,9 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
         addSegment(totalSegments ? endMark : startMark);
  
         Serial.print("Start/stop at ");
-        Serial.println(positionLeft);
+        Serial.print(positionLeft);
+        Serial.print(",");
+        Serial.println(positionRight);
       }
   }
 
@@ -77,7 +88,9 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
         addSegment(rightTurn);    // Initial guess
 
         Serial.print("Radius at ");
-        Serial.println(positionLeft);
+        Serial.print(positionLeft);
+        Serial.print(",");
+        Serial.println(positionRight);
       }
   }
 }
@@ -92,6 +105,9 @@ void PathRecorder::addSegment(SegmentDirection direction)
     segments[totalSegments].distanceRight = 0;
     segments[totalSegments].direction = direction;
     currentSegment = totalSegments;
+    lastSegmentDeferredPositionLeft = lastPositionLeft;
+    lastSegmentDeferredPositionRight = lastPositionRight;
+
     ++totalSegments;
   }
 }
@@ -101,23 +117,24 @@ void PathRecorder::adjustSegmentDistances()
   // Adjust the last segment to record how far it moved and which direction
   if(totalSegments)
   {
-    int distanceLeft = lastPositionLeft - segments[totalSegments-1].positionLeft;
-    int distanceRight = lastPositionRight - segments[totalSegments-1].positionRight;
+    int distanceLeft = lastPositionLeft - lastSegmentDeferredPositionLeft;
+    int distanceRight = lastPositionRight - lastSegmentDeferredPositionRight;
     segments[totalSegments-1].distanceLeft = distanceLeft;
     segments[totalSegments-1].distanceRight = distanceRight;
     if(segments[totalSegments-1].direction > endMark && segments[totalSegments-1].direction != crossOver)
     {
-      if(abs(distanceLeft - distanceRight) < STRAIGHT_LINE_TOLERANCE)
+      //if(abs(distanceLeft - distanceRight) < STRAIGHT_LINE_TOLERANCE)
+      if(abs((distanceLeft + distanceRight)/(distanceLeft - distanceRight)) > STRAIGHT_LINE_TOLERANCE)
         segments[totalSegments-1].direction = forward;
       else
         segments[totalSegments-1].direction = (distanceLeft > distanceRight) ? rightTurn : leftTurn;
     }
-    Serial.print("Adjusted to ");
+    Serial.print("Adjusted dist ");
     printDirection(segments[totalSegments-1].direction);
     Serial.print(",");
-    Serial.print(distanceLeft);
-    Serial.print(",");
-    Serial.println(distanceRight);
+    Serial.print(getCurrentSegmentDistance());
+    Serial.print("->");
+    Serial.println(getSegmentDistance());
   }
 }
 
@@ -136,6 +153,14 @@ PathRecorder::SegmentDirection PathRecorder::getNextSegment()
     return endMark;
 
   return segments[++currentSegment].direction;
+}
+
+PathRecorder::SegmentDirection PathRecorder::peakNextSegment()
+{
+  if(currentSegment >= totalSegments-1)
+    return endMark;
+
+  return segments[currentSegment+1].direction;
 }
 
 int PathRecorder::getSegmentDistance()
@@ -180,6 +205,14 @@ void PathRecorder::printPath()
     printDirection(segments[i].direction);
     Serial.println();
   }
+}
+
+bool PathRecorder::isDirectionForward(PathRecorder::SegmentDirection direction)
+{
+  return direction == SegmentDirection::startMark ||
+         direction == SegmentDirection::endMark ||
+         direction == SegmentDirection::forward || 
+         direction == SegmentDirection::crossOver;
 }
 
 void PathRecorder::printDirection(PathRecorder::SegmentDirection direction)
