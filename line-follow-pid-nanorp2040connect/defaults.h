@@ -14,8 +14,9 @@ const int CROSSOVER_TOLERANCE = 30;
 const int STRAIGHT_LINE_TOLERANCE = 4;
 const int SEGMENT_START_DEFERRED_DISTANCE = 30; // We get this much into a segment before recording the distance (allows for straightening up etc)
 const int ACCELERATION_DISTANCE = 60;
-const float CORNER_APPROACH_DISTANCE = 2.0; // Distance in mm * speed
-const int STOP_DISTANCE = 120 - CROSSOVER_TOLERANCE;
+const int DECELERATION_DISTANCE = 150;
+const float CORNER_APPROACH_DISTANCE = 1.0; // Distance in mm * speed
+const int STOP_DISTANCE = 100 - CROSSOVER_TOLERANCE;
 
 // PID values
 const float LOOP_INTERVAL = 0.003;  // 3mS

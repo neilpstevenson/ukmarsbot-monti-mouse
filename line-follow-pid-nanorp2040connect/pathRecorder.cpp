@@ -166,7 +166,7 @@ PathRecorder::SegmentDirection PathRecorder::peakNextSegment()
 int PathRecorder::getSegmentDistance()
 {
   if(currentSegment >= totalSegments)
-    return STOP_DISTANCE;
+    return 0;
 
   // Return the biggest of left/right
   return segments[currentSegment].distanceLeft > segments[currentSegment].distanceRight ? segments[currentSegment].distanceLeft : segments[currentSegment].distanceRight;
@@ -175,7 +175,7 @@ int PathRecorder::getSegmentDistance()
 int PathRecorder::getCurrentSegmentDistance()
 {
   if(currentSegment >= totalSegments)
-    return STOP_DISTANCE;
+    return 0;
 
   // Return the biggest of left/right
   return lastPositionLeft - segments[currentSegment].positionLeft > lastPositionRight - segments[currentSegment].positionRight ? 
@@ -198,11 +198,12 @@ void PathRecorder::printPath()
   Serial.println(" segments");
   for(int i = 0; i < totalSegments; i++)   
   {
-    Serial.print(segments[i].positionLeft);   Serial.print(",");
-    Serial.print(segments[i].positionRight);   Serial.print(",");
-    Serial.print(segments[i].distanceLeft);   Serial.print(",");
-    Serial.print(segments[i].distanceRight);   Serial.print(",");
-    printDirection(segments[i].direction);
+    Serial.print(i);                         Serial.print(",");
+    printDirection(segments[i].direction);   Serial.print(",");
+    Serial.print(segments[i].positionLeft);  Serial.print(",");
+    Serial.print(segments[i].positionRight); Serial.print(",");
+    Serial.print(segments[i].distanceLeft);  Serial.print(",");
+    Serial.print(segments[i].distanceRight);
     Serial.println();
   }
 }

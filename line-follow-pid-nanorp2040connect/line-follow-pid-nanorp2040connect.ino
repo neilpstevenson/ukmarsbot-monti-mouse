@@ -33,64 +33,84 @@ Quadrature_encoder<m2encoder2, m2encoder1> encoder_r;
 
 PathRecorder pathRecorder;
 
+// Initialise hardware
+void setup() 
+{
+  Serial.begin(115200);
+
+  pinMode(lmotorDIR, OUTPUT);
+  pinMode(rmotorDIR, OUTPUT);
+  pinMode(lmotorPWM, OUTPUT);
+  pinMode(rmotorPWM, OUTPUT);
+  pinMode(sensorLED1, OUTPUT);
+  pinMode(sensorLED2, OUTPUT);
+  pinMode(trigger, OUTPUT);
+  pinMode(indicatorLedBlue, OUTPUT);
+  pinMode(2, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  pinMode(4, INPUT_PULLUP);
+  pinMode(5, INPUT_PULLUP);
+  
+  stopmotors(); // switch off the motors
+
+  encoder_l.begin(pull_direction::up, resolution::quarter);
+  encoder_r.begin(pull_direction::up, resolution::quarter);
+
+}
+
+// Wait for button to be pressed and released
 void buttonwait(int period)
 { 
- // waits until tactile button is pressed
- digitalWrite(indicatorLedBlue, HIGH); // put LED on
- switchvoltage = analogRead(fourwayswitch);
- int flash = 0;
- while (switchvoltage < 1000)
- { 
-    delay(10);
-    // while button not pressed
-    switchvoltage = analogRead(fourwayswitch);
+  // waits until tactile button is pressed
+  digitalWrite(indicatorLedBlue, HIGH); // put LED on
+  switchvoltage = analogRead(fourwayswitch);
+  int flash = 0;
+  while (switchvoltage < 1000)
+  { 
+      delay(10);
+      // while button not pressed
+      switchvoltage = analogRead(fourwayswitch);
 
-    if(++flash % period == 0)
-      digitalWrite(indicatorLedBlue, LOW); // put LED off
-    else if(flash % period == period/2)
-      digitalWrite(indicatorLedBlue, HIGH); // put LED on
-
-    //int start_pos_l = encoder_l.count();
-    //int start_pos_r = encoder_r.count();
-    //Serial.print(start_pos_l);
-    //Serial.print(",");
-    //Serial.println(start_pos_r);
- }
- 
- digitalWrite(indicatorLedBlue, LOW); // LED off
- // Debounce time
- delay(20);
- while (switchvoltage >= 1000)
- { 
-    // while button pressed
-    switchvoltage = analogRead(fourwayswitch);
- }
- digitalWrite(indicatorLedBlue, HIGH); // put LED on
- // Time for finger to be removed...
- delay(500);
+      if(++flash % period == 0)
+        digitalWrite(indicatorLedBlue, LOW); // put LED off
+      else if(flash % period == period/2)
+        digitalWrite(indicatorLedBlue, HIGH); // put LED on
+  }
+  
+  digitalWrite(indicatorLedBlue, LOW); // LED off
+  // Debounce time
+  delay(20);
+  while (switchvoltage >= 1000)
+  { 
+      // while button pressed
+      switchvoltage = analogRead(fourwayswitch);
+  }
+  digitalWrite(indicatorLedBlue, HIGH); // put LED on
+  // Time for finger to be removed...
+  delay(500);
 }
 
 void functionswitch()
 {
- switchvoltage = analogRead(fourwayswitch);
- fnswvalue = 16;
- if (switchvoltage > 15) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+29)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+108)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+172)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+266)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+324)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+389)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+443)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+547)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+594)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+650)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+694)) fnswvalue = fnswvalue - 1; 
- if (switchvoltage > (15+760)) fnswvalue = fnswvalue - 1;
- if (switchvoltage > (15+802)) fnswvalue = fnswvalue - 1; 
- if (switchvoltage < (15+849)) fnswvalue = fnswvalue - 1;
- if (switchvoltage >= (15+849)) fnswvalue = 0;
- if (switchvoltage > 999) fnswvalue = 16; 
+  switchvoltage = analogRead(fourwayswitch);
+  fnswvalue = 16;
+  if (switchvoltage > 15) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+29)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+108)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+172)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+266)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+324)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+389)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+443)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+547)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+594)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+650)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+694)) fnswvalue = fnswvalue - 1; 
+  if (switchvoltage > (15+760)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage > (15+802)) fnswvalue = fnswvalue - 1; 
+  if (switchvoltage < (15+849)) fnswvalue = fnswvalue - 1;
+  if (switchvoltage >= (15+849)) fnswvalue = 0;
+  if (switchvoltage > 999) fnswvalue = 16; 
 }
 
 void stopmotors() 
@@ -125,45 +145,46 @@ void batterycheck()
 
 void photoread()
 {
- // read both line sensors & start/stop sensor
- lfrontsens = analogRead(lfront);
- rfrontsens = analogRead(rfront);
- rsidesens = analogRead(rside);
- lsidesens = analogRead(lside);
+  // read both line sensors & start/stop sensor
+  lfrontsens = analogRead(lfront);
+  rfrontsens = analogRead(rfront);
+  rsidesens = analogRead(rside);
+  lsidesens = analogRead(lside);
 
- // light the right hand sensor LED if white line seen by left sensor
- if (rfrontsens < sensorthreshold)
- {
-  digitalWrite (sensorLED1, HIGH);
- }
- else 
- {
-  digitalWrite (sensorLED1, LOW);
- }
- // light the left hand sensor LED if white line seen by left sensor
- if (lfrontsens < sensorthreshold)
- {
-  digitalWrite (sensorLED2, HIGH);
- }
- else 
- {
-  digitalWrite (sensorLED2, LOW);
- }
+  // light the right hand sensor LED if white line seen by left sensor
+  if (rfrontsens < sensorthreshold)
+  {
+    digitalWrite (sensorLED1, HIGH);
+  }
+  else 
+  {
+    digitalWrite (sensorLED1, LOW);
+  }
+  // light the left hand sensor LED if white line seen by left sensor
+  if (lfrontsens < sensorthreshold)
+  {
+    digitalWrite (sensorLED2, HIGH);
+  }
+  else 
+  {
+    digitalWrite (sensorLED2, LOW);
+  }
 
 //#define DEBUG_SENS
 #ifdef DEBUG_SENS
- Serial.print("SENS,");
- Serial.print(lsidesens);
- Serial.print(",");
- Serial.print(lfrontsens);
- Serial.print(",");
- Serial.print(rfrontsens);
- Serial.print(",");
- Serial.println(rsidesens);
+  Serial.print("SENS,");
+  Serial.print(lsidesens);
+  Serial.print(",");
+  Serial.print(lfrontsens);
+  Serial.print(",");
+  Serial.print(rfrontsens);
+  Serial.print(",");
+  Serial.println(rsidesens);
 #endif
- 
 }
 
+// Initial line follower function, recording what it sees along the way
+//
 void followAndRecordPath(int basespeed, int slowdownSpeed) 
 {
   Serial.print("Base speed: "); Serial.println(basespeed);
@@ -262,6 +283,8 @@ void followAndRecordPath(int basespeed, int slowdownSpeed)
   pathRecorder.printPath();
 }
 
+// Line follow, using path knowledge previously recorded
+//
 void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
 {
   Serial.print("Time mS: "); Serial.println(endTime-startTime);
@@ -291,9 +314,12 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
   startTime = millis();
   unsigned long int count = 0;
 
+  // Start at cornering speed
+  int currentSpeed = cornerSpeed;
+
   // Forward to start line
-  rightspeed = cornerSpeed;
-  leftspeed = cornerSpeed;
+  rightspeed = currentSpeed;
+  leftspeed = currentSpeed;
   analogWrite(rmotorPWM, rightspeed); // set right motor speed
   analogWrite(lmotorPWM, leftspeed); // set left motor speed
 
@@ -301,10 +327,7 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
 
   PathRecorder::SegmentDirection currentDirection = pathRecorder.getFirstSegment();
   PathRecorder::SegmentDirection nextDirection = pathRecorder.peakNextSegment();
-  PathRecorder::printDirection(currentDirection);
-  Serial.print(",");
-  Serial.println(pathRecorder.getSegmentDistance());
-
+  
   while(!playbackRecorder.detectedEndMarker())
   {
     photoread();
@@ -315,92 +338,81 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
 #endif
 
     // Detect and record any markers found 
-    playbackRecorder.record(lsidesens, rsidesens, (int)(-encoder_l.count() * ENCODER_CALIBRATION), (int)(encoder_r.count() * ENCODER_CALIBRATION));
+    int leftPosition = (int)(-encoder_l.count() * ENCODER_CALIBRATION);
+    int rightPosition = (int)(encoder_r.count() * ENCODER_CALIBRATION);
+    playbackRecorder.record(lsidesens, rsidesens, leftPosition, rightPosition);
 
     // Adjust the segment number, if changed
     if(currentDirection != PathRecorder::SegmentDirection::endMark && pathRecorder.currentSegmentNumber() != playbackRecorder.currentSegmentNumber())
     {
       currentDirection = pathRecorder.getNextSegment();
       nextDirection = pathRecorder.peakNextSegment();
-
-      PathRecorder::printDirection(currentDirection);
-      Serial.print(",");
-      Serial.println(pathRecorder.getSegmentDistance());
     }
 
     // Push through PID controller
     pidInput = sensdiff;
     int turn = (int)steeringPID.compute();
 
-    Serial.print("D: ");
-    Serial.print(playbackRecorder.getCurrentSegmentDistance());
-    Serial.print(",");
-    Serial.println(pathRecorder.getSegmentDistance());
     // Set the motors to the default speed +/- turn
     if(PathRecorder::isDirectionForward(currentDirection))
     {
-      int distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance();
+      int distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance() - DECELERATION_DISTANCE;
       int decelDistance = forwardSpeed * CORNER_APPROACH_DISTANCE;
       if(distanceToGo > decelDistance || PathRecorder::isDirectionForward(nextDirection))
       {
-          Serial.print("speed");
-          Serial.print(leftspeed);
-          Serial.print(",");
-          Serial.print(rightspeed);
-          Serial.print(",");
-          Serial.println(playbackRecorder.getCurrentSegmentDistance());
         if(playbackRecorder.getCurrentSegmentDistance() < ACCELERATION_DISTANCE)
         {
           // Accelerate up to speed
           int speed = (forwardSpeed - cornerSpeed) * playbackRecorder.getCurrentSegmentDistance() / ACCELERATION_DISTANCE + cornerSpeed;
           // Keep going if already up to speed
-          speed = std::max(speed, std::min(rightspeed, leftspeed));
-          Serial.print("Accel speed ");
-          Serial.println(speed);
-          rightspeed = speed * (1 + turn);
-          leftspeed = speed * (1 - turn);
+          currentSpeed = std::max(speed, currentSpeed);
+          Serial.print("Accel,");
         }
         else
         {
           // Want max speed
-          Serial.print("Fast ");
-          Serial.println(playbackRecorder.getCurrentSegmentDistance());
-          rightspeed = forwardSpeed * (1 + turn);
-          leftspeed = forwardSpeed * (1 - turn);
+          currentSpeed = forwardSpeed;
+          Serial.print("Fast,");
         }
       }
       else if(distanceToGo > 0) 
       {
         int speed = (forwardSpeed - cornerSpeed) * distanceToGo / decelDistance + cornerSpeed;
         // Don't go faster if already slower
-        speed = std::min(speed, std::max(rightspeed, leftspeed));
-        Serial.print("Decel1 speed ");
-        Serial.println(speed);
-        rightspeed = speed * (1 + turn);
-        leftspeed = speed * (1 - turn);
+        currentSpeed = std::min(speed, currentSpeed);
+        Serial.print("Decel,");
       }
       else
       {
-        Serial.print("Decel2 ");
-        Serial.println(playbackRecorder.getCurrentSegmentDistance());
-        rightspeed = cornerSpeed * (1 + turn);
-        leftspeed = cornerSpeed * (1 - turn);
+        currentSpeed = cornerSpeed;
+        Serial.print("D_done,");
       }
     }
     else
     {
-      Serial.print("Corner ");
-      Serial.println(playbackRecorder.getCurrentSegmentDistance());
-      rightspeed = cornerSpeed * (1 + turn);
-      leftspeed = cornerSpeed * (1 - turn);
+      currentSpeed = cornerSpeed;
+      Serial.print("Corner,");
     }
+    
+    rightspeed = currentSpeed * (1 + turn);
+    leftspeed = currentSpeed * (1 - turn);
 
     analogWrite(rmotorPWM, rightspeed >= 0 ? rightspeed : 0); // set right motor speed
     analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
 
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, playbackRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
-  
+
+    // Debug
+    Serial.print(playbackRecorder.currentSegmentNumber());
+    Serial.print(",");        PathRecorder::printDirection(currentDirection);
+    Serial.print(",seg_d=");  Serial.print(pathRecorder.getSegmentDistance());
+    Serial.print(",cur_d=");  Serial.print(playbackRecorder.getCurrentSegmentDistance());
+    Serial.print(",s=");      Serial.print(currentSpeed);
+    Serial.print(",turn=");   Serial.print(turn);
+    Serial.print(",pos=");    Serial.print(leftPosition);
+    Serial.print(",");        Serial.println(leftPosition);
+
     count++;
     delay(3);
   }
@@ -446,172 +458,6 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
   pathRecorder.printPath();
 }
 
-/*
-void linefollow() 
-{
-  unsigned long int count = 0;
-  int endStopLineCount = START_STOP_COUNT_DEFAULT;
-
-  rightspeed = basespeed;
-  leftspeed = basespeed;
-  digitalWrite(rmotorDIR, HIGH); // set right motor forward
-  digitalWrite(lmotorDIR, LOW); // set left motor forward
-  
-  digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
-
-
-  // Wait for marker to go off, as alternative to dragster start 
-  // tirgger
-  photoread();
-
-  // Steering
-  float pidInput = 0.0;
-  float pidSetpoint = 0.0;
-  PID steeringPID(PID_Kp * basespeed, PID_Ki * basespeed, PID_Kd * basespeed, &pidInput, &pidSetpoint);
-
-  //Serial.print("lsidesens="); Serial.println(lsidesens);
-  
-#if SENSOR_POLAIRTY_TRUE
-  while(lsidesens > markerHighThreshold)
-#else
-  while(lsidesens < markerHighThreshold)
-#endif
-  {
-    delay(10);
-    photoread();
-    //Serial.print("lsidesens="); Serial.println(lsidesens);
-
-    // Assume a Dragster course
-    endStopLineCount = START_STOP_COUNT_DRAGSTER;
-    steeringPID.set_tunings(PID_Kp_DRAGSTER, PID_Ki_DRAGSTER, PID_Kd_DRAGSTER);
-  }
-
-  startStopCount = 0;
-  radiusMarkerCount = 0;
-
-  encoder_l.reset_count();
-  encoder_r.reset_count();
-
-  pathRecorder.reset();
-
-  unsigned long int startTime = millis();
-  analogWrite(rmotorPWM, rightspeed); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed); // set left motor speed
-
-  while(!pathRecorder.detectedEndMarker())
-  {
-    photoread();
-#if SENSOR_POLAIRTY_TRUE
-    sensdiff = rfrontsens - lfrontsens;
-#else
-    sensdiff = lfrontsens - rfrontsens;
-#endif
-
-    // Push through PID controller
-    pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
-
-    // Detect and record any markers found 
-    pathRecorder.record(lsidesens, rsidesens, (int)(-encoder_l.count() * ENCODER_CALIBRATION), (int)(encoder_r.count() * ENCODER_CALIBRATION));
-
-    // Set the motors to the default speed +/- turn
-    if(turn > 0)
-    {
-      //rightspeed = basespeed + (turn*2/3);
-      rightspeed = basespeed + turn;
-      //rightspeed = basespeed;
-      leftspeed = basespeed - turn;
-      //leftspeed = basespeed - (turn*2/3);
-    }
-    else
-    {
-      rightspeed = basespeed + turn;
-      //rightspeed = basespeed + (turn*2/3);
-      //leftspeed = basespeed;
-      leftspeed = basespeed - turn;
-      //leftspeed = basespeed - (turn*2/3);
-    }
-    analogWrite(rmotorPWM, rightspeed >= 0 ? rightspeed : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
-    
-    //Serial.print(leftspeed);
-    //Serial.print(",");
-    //Serial.println(rightspeed);
-    
-    count++;
-    delay(3);
-  }
-
-  unsigned long int endTime = millis();
-
-  digitalWrite(indicatorLedBlue, LOW); // LED off
-  
-  // Slowdown sequence
-  int stopMarkerPos_r = encoder_r.count();
-  while(stopMarkerPos_r + STOP_DISTANCE > encoder_r.count())
-  {
-//  int SLOWDOWN_TIME = 30000/basespeed/SLOWDOWN_SPEED_RATIO;
-//  for(int i = 0; i < SLOWDOWN_TIME; i++)
-//  {
-    photoread();
-#if SENSOR_POLAIRTY_TRUE
-    sensdiff = rfrontsens - lfrontsens;
-#else
-    sensdiff = lfrontsens - rfrontsens;
-#endif
-
-    // Push through PID controller
-    pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
-
-    // Set the motors to the default speed +/- turn
-    rightspeed = basespeed + turn; //
-    leftspeed = basespeed - turn; //
-    analogWrite(rmotorPWM, rightspeed/SLOWDOWN_SPEED_RATIO); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed/SLOWDOWN_SPEED_RATIO); // set left motor speed
-    
-    delay(3);
-  }
-  
-  stopmotors();
-
-  while(1)
-  {
-    Serial.print("Time mS: "); Serial.println(endTime-startTime);
-    Serial.print("Loop: "); Serial.print(count);
-    Serial.print(" ("); Serial.print(count/((endTime-startTime)/1000.0)); Serial.println("/sec)"); 
-    pathRecorder.printPath();
-    delay(2000);
-  }
-
-  // pause to see led off
-  delay(500);
-}
-*/
-
-void setup() 
-{
-  Serial.begin(115200);
-
-  pinMode(lmotorDIR, OUTPUT);
-  pinMode(rmotorDIR, OUTPUT);
-  pinMode(lmotorPWM, OUTPUT);
-  pinMode(rmotorPWM, OUTPUT);
-  pinMode(sensorLED1, OUTPUT);
-  pinMode(sensorLED2, OUTPUT);
-  pinMode(trigger, OUTPUT);
-  pinMode(indicatorLedBlue, OUTPUT);
-  pinMode(2, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(4, INPUT_PULLUP);
-  pinMode(5, INPUT_PULLUP);
-  
-  stopmotors(); // switch off the motors
-
-  encoder_l.begin(pull_direction::up, resolution::quarter);
-  encoder_r.begin(pull_direction::up, resolution::quarter);
-
-}
 
 void sensorTest()
 {
@@ -670,6 +516,7 @@ void loop()
   int batteryread = analogRead(battery); // read battery voltage
   Serial.print("Battery level ");
   Serial.println(batteryread);
+  batterycheck();
   Serial.print("Running at ");
   Serial.println(basespeed);
 
@@ -715,6 +562,7 @@ void loop()
     {
       // Now replay at higher speed
       buttonwait(20); // wait for function button to be pressed
+      batterycheck();
       functionswitch(); // read function switch value after button released
       int fastRunSpeed = fnswvalue * 17;
       if(fastRunSpeed <= basespeed)
