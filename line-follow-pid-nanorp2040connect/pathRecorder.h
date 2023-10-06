@@ -62,6 +62,7 @@ public:
   SegmentDirection getNextSegment();
   SegmentDirection peakNextSegment();
   int getSegmentDistance();
+  int getNextSegmentDistance();
   int getCurrentSegmentDistance();  // during record only
   bool isSegmentEndMarker();
   int currentSegmentNumber() { return currentSegment; }

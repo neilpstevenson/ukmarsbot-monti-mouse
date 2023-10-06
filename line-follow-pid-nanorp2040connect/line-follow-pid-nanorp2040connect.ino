@@ -134,22 +134,53 @@ void batterycheck()
     return; // check if over 6 volts and return if it is
   analogWrite(rmotorPWM, 0); // set right motor speed to stop
   analogWrite(lmotorPWM, 0); // set left motor speed to stop
-  while (1) // endless loop
+  while (batteryread < 614)
   {
-    digitalWrite(indicatorLedBlue, HIGH); // switch on LED
+    // Flash all LEDs
+    digitalWrite(indicatorLedBlue, HIGH);
+    digitalWrite(sensorLED1, LOW);
+    digitalWrite(sensorLED2, LOW);
     delay (100); // wait 1/10 second
-    digitalWrite(indicatorLedBlue, LOW); // switch off LED
-    delay (500); // wait 1/2 second
+    digitalWrite(indicatorLedBlue, LOW);
+    digitalWrite(sensorLED1, HIGH);
+    digitalWrite(sensorLED2, HIGH);
+    delay (100); // wait 1/2 second
   }
 } // end of batterycheck function
 
 void photoread()
 {
   // read both line sensors & start/stop sensor
+  int lfrontsensAmbient = analogRead(lfront);
+  int rfrontsensAmbient = analogRead(rfront);
+  int rsidesensAmbient = analogRead(rside);
+  int lsidesensAmbient = analogRead(lside);
+
+  digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
+
+  // Settling time
+  delayMicroseconds(100);
+
+  // read both line sensors & start/stop sensor
   lfrontsens = analogRead(lfront);
   rfrontsens = analogRead(rfront);
   rsidesens = analogRead(rside);
   lsidesens = analogRead(lside);
+
+  digitalWrite(trigger, LOW);  // Sensor illumination LEDs off
+
+// Remove ambient light level
+#if SENSOR_POLAIRTY_TRUE
+  lfrontsens = lfrontsens > lfrontsensAmbient ? lfrontsens - lfrontsensAmbient : 0;
+  rfrontsens = rfrontsens > rfrontsensAmbient ? rfrontsens - rfrontsensAmbient : 0;
+  rsidesens = rsidesens > rsidesensAmbient ? rsidesens - rsidesensAmbient : 0;
+  lsidesens = lsidesens > lsidesensAmbient ? lsidesens - lsidesensAmbient : 0;
+#else
+  lfrontsens = lfrontsens < lfrontsensAmbient ? lfrontsens + (1023 - lfrontsensAmbient) : 1023;
+  rfrontsens = rfrontsens < rfrontsensAmbient ? rfrontsens + (1023 - rfrontsensAmbient) : 1023;
+  rsidesens = rsidesens < rsidesensAmbient ? rsidesens + (1023 - rsidesensAmbient) : 1023;
+  lsidesens = lsidesens < lsidesensAmbient ? lsidesens + (1023 - lsidesensAmbient) : 1023;
+#endif
 
   // light the right hand sensor LED if white line seen by left sensor
   if (rfrontsens < sensorthreshold)
@@ -212,8 +243,6 @@ void followAndRecordPath(int basespeed, int slowdownSpeed)
   leftspeed = basespeed;
   analogWrite(rmotorPWM, rightspeed); // set right motor speed
   analogWrite(lmotorPWM, leftspeed); // set left motor speed
-
-  digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
 
   while(!pathRecorder.detectedEndMarker())
   {
@@ -289,7 +318,7 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
 {
   Serial.print("Time mS: "); Serial.println(endTime-startTime);
   pathRecorder.printPath();
-  delay(2000);
+  delay(1000);
 
   Serial.print("Base speed: "); Serial.println(forwardSpeed);
   Serial.print("Corner speed: "); Serial.println(cornerSpeed);
@@ -323,8 +352,6 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
   analogWrite(rmotorPWM, rightspeed); // set right motor speed
   analogWrite(lmotorPWM, leftspeed); // set left motor speed
 
-  digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
-
   PathRecorder::SegmentDirection currentDirection = pathRecorder.getFirstSegment();
   PathRecorder::SegmentDirection nextDirection = pathRecorder.peakNextSegment();
   
@@ -357,8 +384,19 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
     if(PathRecorder::isDirectionForward(currentDirection))
     {
       int distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance() - DECELERATION_DISTANCE;
+      if(PathRecorder::isDirectionForward(nextDirection))
+      {
+        distanceToGo += pathRecorder.getNextSegmentDistance();
+      }
       int decelDistance = forwardSpeed * CORNER_APPROACH_DISTANCE;
-      if(distanceToGo > decelDistance || PathRecorder::isDirectionForward(nextDirection))
+      if(distanceToGo > 0 && distanceToGo <= decelDistance) 
+      {
+        int speed = (forwardSpeed - cornerSpeed) * distanceToGo / decelDistance + cornerSpeed;
+        // Don't go faster if already slower
+        currentSpeed = std::min(speed, currentSpeed);
+        Serial.print("Decel,");
+      }
+      else if(distanceToGo > decelDistance)
       {
         if(playbackRecorder.getCurrentSegmentDistance() < ACCELERATION_DISTANCE)
         {
@@ -374,13 +412,6 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
           currentSpeed = forwardSpeed;
           Serial.print("Fast,");
         }
-      }
-      else if(distanceToGo > 0) 
-      {
-        int speed = (forwardSpeed - cornerSpeed) * distanceToGo / decelDistance + cornerSpeed;
-        // Don't go faster if already slower
-        currentSpeed = std::min(speed, currentSpeed);
-        Serial.print("Decel,");
       }
       else
       {
@@ -481,21 +512,44 @@ void sensorTest()
     // Read function switch
     functionswitch();
 
+// Remove ambient light level
+#if SENSOR_POLAIRTY_TRUE
+  int lsidesens = a0val > a0valu ? a0val - a0valu : 0;
+  int lfrontsens = a1val > a1valu ? a1val - a1valu : 0;
+  int rfrontsens = a2val > a2valu ? a2val - a2valu : 0;
+  int rsidesens = a3val > a3valu ? a3val - a3valu : 0;
+#else
+  int lsidesens = a0val < a0valu ? a0val + (1023 - a0valu) : 1023;
+  int lfrontsens = a1val < a1valu ? a1val + (1023 - a1valu) : 1023;
+  int rfrontsens = a2val < a2valu ? a2val + (1023 - a2valu) : 1023;
+  int rsidesens = a3val < a3valu ? a3val + (1023 - a3valu) : 1023;
+#endif
+
     Serial.print(a0val);
     Serial.print(",");
     Serial.print(a0valu);
     Serial.print(",");
+    Serial.print(lsidesens);    
+    Serial.print(", ");
     Serial.print(a1val);
     Serial.print(",");
     Serial.print(a1valu);
     Serial.print(",");
+    Serial.print(lfrontsens);    
+    Serial.print(", ");
     Serial.print(a2val);
     Serial.print(",");
     Serial.print(a2valu);
     Serial.print(",");
+    Serial.print(rfrontsens);    
+    Serial.print(", ");
     Serial.print(a3val);
     Serial.print(",");
     Serial.print(a3valu);
+    Serial.print(",");
+    Serial.print(rsidesens);    
+    Serial.print(", ");
+    Serial.print(rfrontsens - lfrontsens);
     Serial.print(",");
     Serial.println(fnswvalue);
 

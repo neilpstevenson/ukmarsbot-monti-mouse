@@ -16,22 +16,18 @@ const int SEGMENT_START_DEFERRED_DISTANCE = 30; // We get this much into a segme
 const int ACCELERATION_DISTANCE = 60;
 const int DECELERATION_DISTANCE = 150;
 const float CORNER_APPROACH_DISTANCE = 1.0; // Distance in mm * speed
-const int STOP_DISTANCE = 100 - CROSSOVER_TOLERANCE;
+const int STOP_DISTANCE = 80 - CROSSOVER_TOLERANCE;
 
 // PID values
 const float LOOP_INTERVAL = 0.003;  // 3mS
 const float LOOP_FREQUENCY = 1/LOOP_INTERVAL;  // Hz
 #define MAX_MOTOR_VOLTS 1
-const float PID_Kp = 0.03;
+const float PID_Kp = 0.012; // 0.015;    // 0.03 old 1/2 size board
 const float PID_Ki = 0.0;
-const float PID_Kd = 0.0025;
-
-const float PID_Kp_DRAGSTER = 0.1;
-const float PID_Ki_DRAGSTER = 0.0;
-const float PID_Kd_DRAGSTER = 0.01;
+const float PID_Kd = 0.001; // 0.001;  // 0.0025 old 1/2 size board
 
 // Marker thresholds
-const int markerLowThreshold = 250; //850; //700; // e.g. 250 for old full-size or half-size board, 850 for neil's new inverted board
+const int markerLowThreshold = 740; //250; //850; //700; // e.g. 740 for white 1/2 size board, 250 for old full-size or half-size board, 850 for neil's new inverted board
 const int markerHighThreshold = markerLowThreshold+20;
 
 const int sensorthreshold = (markerLowThreshold + markerHighThreshold)/2; // LED illumination threshold

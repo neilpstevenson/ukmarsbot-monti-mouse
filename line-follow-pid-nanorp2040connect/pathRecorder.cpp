@@ -172,6 +172,15 @@ int PathRecorder::getSegmentDistance()
   return segments[currentSegment].distanceLeft > segments[currentSegment].distanceRight ? segments[currentSegment].distanceLeft : segments[currentSegment].distanceRight;
 }
 
+int PathRecorder::getNextSegmentDistance()
+{
+  if(currentSegment >= totalSegments-1)
+    return 0;
+
+  // Return the biggest of left/right
+  return segments[currentSegment+1].distanceLeft > segments[currentSegment+1].distanceRight ? segments[currentSegment+1].distanceLeft : segments[currentSegment+1].distanceRight;
+}
+
 int PathRecorder::getCurrentSegmentDistance()
 {
   if(currentSegment >= totalSegments)
