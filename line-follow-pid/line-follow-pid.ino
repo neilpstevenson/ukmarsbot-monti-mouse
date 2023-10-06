@@ -115,12 +115,13 @@ void batterycheck()
 void photoread()
 {
  // read both line sensors & start/stop sensor
+ lsidesens = analogRead(lside);
  lfrontsens = analogRead(lfront);
  rfrontsens = analogRead(rfront);
  rsidesens = analogRead(rside);
 
  // light the right hand sensor LED if white line seen by left sensor
- if (rfrontsens < sensorthreshold)
+ if (rfrontsens < lineThreshold)
  {
   digitalWrite (sensorLED1, HIGH);
  }
@@ -129,7 +130,7 @@ void photoread()
   digitalWrite (sensorLED1, LOW);
  }
  // light the left hand sensor LED if white line seen by left sensor
- if (lfrontsens < sensorthreshold)
+ if (lfrontsens < lineThreshold)
  {
   digitalWrite (sensorLED2, HIGH);
  }
@@ -138,9 +139,13 @@ void photoread()
   digitalWrite (sensorLED2, LOW);
  }
 
+//#define DEBUG_SENS
 #ifdef DEBUG_SENS
+ Serial.print("rad=");
+ Serial.print(lsidesens);
+ Serial.print(" l=");
  Serial.print(lfrontsens);
- Serial.print("/");
+ Serial.print(" r=");
  Serial.print(rfrontsens);
  Serial.print(" ss=");
  Serial.println(rsidesens);
@@ -199,13 +204,11 @@ void linefollow()
     analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
 
     count++;
-    delay(3);
+    delay((int)(LOOP_INTERVAL*1000));
   }
 
   unsigned long int endTime = millis();
 
-  digitalWrite(LED13, LOW); // LED off
-  
   // Slowdown sequence
   for(int i = 0; i < SLOWDOWN_TIME; i++)
   {
@@ -222,7 +225,9 @@ void linefollow()
     analogWrite(rmotorPWM, rightspeed/SLOWDOWN_SPEED_RATIO); // set right motor speed
     analogWrite(lmotorPWM, leftspeed/SLOWDOWN_SPEED_RATIO); // set left motor speed
   }
-  
+
+  digitalWrite(LED13, LOW); // LED off
+    
   stopmotors();
 
   Serial.print("Time mS: "); Serial.println(endTime-startTime);
