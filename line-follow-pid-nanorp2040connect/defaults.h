@@ -6,6 +6,7 @@ const int MIN_BASE_SPEED = 40; //100;
 const int MAX_BASE_SPEED = 127;
 const float SLOWDOWN_SPEED_RATIO = 0.7; // For segment after the end marker
 //const int FAST_FORWARD_SPEEDUP = 30; // Added to forward speed during straights
+const int ILLUMINATION_ON_TIME_uS = 100;
 
 const float ENCODER_CALIBRATION = 1.7;  // Counts to mm
 

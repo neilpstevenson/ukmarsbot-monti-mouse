@@ -126,12 +126,12 @@ void stopmotors()
 
 }
 
-void batterycheck()
+bool batterycheck()
 { 
   // function to check battery voltage is over 6 volts
   int batteryread = analogRead(battery); // read battery voltage
   if (batteryread > 614) 
-    return; // check if over 6 volts and return if it is
+    return true; // check if over 6 volts and return if it is
   analogWrite(rmotorPWM, 0); // set right motor speed to stop
   analogWrite(lmotorPWM, 0); // set left motor speed to stop
   while (batteryread < 614)
@@ -145,7 +145,12 @@ void batterycheck()
     digitalWrite(sensorLED1, HIGH);
     digitalWrite(sensorLED2, HIGH);
     delay (100); // wait 1/2 second
+    batteryread = analogRead(battery);
   }
+  // Now OK
+  digitalWrite(sensorLED1, LOW);
+  digitalWrite(sensorLED2, LOW);
+  return false;
 } // end of batterycheck function
 
 void photoread()
@@ -159,7 +164,7 @@ void photoread()
   digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
 
   // Settling time
-  delayMicroseconds(100);
+  delayMicroseconds(ILLUMINATION_ON_TIME_uS);
 
   // read both line sensors & start/stop sensor
   lfrontsens = analogRead(lfront);
@@ -501,13 +506,17 @@ void sensorTest()
     int a3valu = analogRead(rside);    
   
     digitalWrite(trigger, HIGH);  // Sensor illumination LEDs on
-    delay(1);
+
+    // Settling time
+    delayMicroseconds(ILLUMINATION_ON_TIME_uS);
     
     // read the value from the sensor:
     int a0val = analogRead(lside);    
     int a1val = analogRead(lfront);    
     int a2val = analogRead(rfront);    
     int a3val = analogRead(rside);    
+
+    digitalWrite(trigger, LOW);  // Sensor illumination LEDs off
 
     // Read function switch
     functionswitch();
@@ -553,7 +562,6 @@ void sensorTest()
     Serial.print(",");
     Serial.println(fnswvalue);
 
-    digitalWrite(trigger, LOW);  // Sensor illumination LEDs off
     delay(20); 
   }
 }
@@ -561,7 +569,10 @@ void sensorTest()
 void loop() 
 {
   // Get the base speed from the DIP switches
-  buttonwait(50); // wait for function button to be pressed
+  while(!batterycheck())
+  {
+    buttonwait(50); // wait for function button to be pressed
+  }
   functionswitch(); // read function switch value after button released
   basespeed = fnswvalue * 17;
   if(basespeed < MIN_BASE_SPEED)
@@ -570,7 +581,7 @@ void loop()
   int batteryread = analogRead(battery); // read battery voltage
   Serial.print("Battery level ");
   Serial.println(batteryread);
-  batterycheck();
+  //batterycheck();
   Serial.print("Running at ");
   Serial.println(basespeed);
 
@@ -609,7 +620,7 @@ void loop()
 
   if (fnswvalue > 0) 
   {
-    //linefollow(); // line follower routine
+    // Initial run
     followAndRecordPath(basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
   
     while(1)
