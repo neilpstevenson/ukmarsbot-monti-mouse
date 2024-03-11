@@ -60,19 +60,27 @@ void setup()
 
 }
 
+bool buttonPressed()
+{
+  switchvoltage = analogRead(fourwayswitch);
+  return switchvoltage >= 1000;
+}
+
 // Wait for button to be pressed and released
 void buttonwait(int period)
 { 
-  // waits until tactile button is pressed
   digitalWrite(indicatorLedBlue, HIGH); // put LED on
-  switchvoltage = analogRead(fourwayswitch);
+
+  // Wait for button Up
+  while (buttonPressed())
+  {
+    delay(10);
+  }
+
   int flash = 0;
-  while (switchvoltage < 1000)
+  while (!buttonPressed())
   { 
       delay(10);
-      // while button not pressed
-      switchvoltage = analogRead(fourwayswitch);
-
       if(++flash % period == 0)
         digitalWrite(indicatorLedBlue, LOW); // put LED off
       else if(flash % period == period/2)
@@ -80,14 +88,18 @@ void buttonwait(int period)
   }
   
   digitalWrite(indicatorLedBlue, LOW); // LED off
+  
   // Debounce time
   delay(20);
-  while (switchvoltage >= 1000)
-  { 
-      // while button pressed
-      switchvoltage = analogRead(fourwayswitch);
+
+  // Wait for button Up
+  while (buttonPressed())
+  {
+    delay(10);
   }
+
   digitalWrite(indicatorLedBlue, HIGH); // put LED on
+
   // Time for finger to be removed...
   delay(500);
 }
@@ -189,6 +201,7 @@ void photoread()
   lsidesens = lsidesens < lsidesensAmbient ? lsidesens + (1023 - lsidesensAmbient) : 1023;
 #endif
 
+#ifdef LEDS_FROM_SENSORS
   // light the right hand sensor LED if white line seen by left sensor
   if (rfrontsens < sensorthreshold)
   {
@@ -207,6 +220,7 @@ void photoread()
   {
     digitalWrite (sensorLED2, LOW);
   }
+#endif
 
 //#define DEBUG_SENS
 #ifdef DEBUG_SENS
@@ -262,17 +276,17 @@ void followAndRecordPath(int basespeed, int slowdownSpeed)
 
     // Push through PID controller
     pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
+    float turn = steeringPID.compute();
 
     // Detect and record any markers found 
     pathRecorder.record(lsidesens, rsidesens, (int)(-encoder_l.count() * ENCODER_CALIBRATION), (int)(encoder_r.count() * ENCODER_CALIBRATION));
 
     // Set the motors to the default speed +/- turn
-    rightspeed = basespeed * (1 + turn);
-    leftspeed = basespeed * (1 - turn);
-
-    analogWrite(rmotorPWM, rightspeed >= 0 ? rightspeed : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
+    rightspeed = int(basespeed * (1 + turn));
+    leftspeed = int(basespeed * (1 - turn));
+  
+    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, pathRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
@@ -296,14 +310,29 @@ void followAndRecordPath(int basespeed, int slowdownSpeed)
 #endif
 
     // Push through PID controller
-    pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
+#if SENSOR_POLAIRTY_TRUE
+    if(rsidesens < markerHighThreshold ||
+       lsidesens < markerHighThreshold)
+#else
+    if(rsidesens > markerLowThreshold || 
+       lsidesens > markerLowThreshold)
+#endif
+    {
+      // Not at crossover
+      pidInput = sensdiff;
+    }
+    else
+    {
+      // Ignore crossover
+      pidInput = 0;
+    }
+    float turn = steeringPID.compute();
 
     // Set the motors to the default speed +/- turn
-    rightspeed = slowdownSpeed * (1 + turn);
-    leftspeed = slowdownSpeed * (1 - turn);
-    analogWrite(rmotorPWM, rightspeed); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed); // set left motor speed
+    rightspeed = int(slowdownSpeed * (1 + turn));
+    leftspeed = int(slowdownSpeed * (1 - turn));
+    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
     
     delay(3);
   }
@@ -356,8 +385,8 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
   // Forward to start line
   rightspeed = currentSpeed;
   leftspeed = currentSpeed;
-  analogWrite(rmotorPWM, rightspeed); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed); // set left motor speed
+  analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+  analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
   PathRecorder::SegmentDirection currentDirection = pathRecorder.getFirstSegment();
   PathRecorder::SegmentDirection nextDirection = pathRecorder.peakNextSegment();
@@ -384,18 +413,34 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
     }
 
     // Push through PID controller
-    pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
+#if SENSOR_POLAIRTY_TRUE
+    if(rsidesens < markerHighThreshold ||
+       lsidesens < markerHighThreshold)
+#else
+    if(rsidesens > markerLowThreshold || 
+       lsidesens > markerLowThreshold)
+#endif
+    {
+      // Not at crossover
+      pidInput = sensdiff;
+    }
+    else
+    {
+      // Ignore crossover
+      pidInput = 0;
+    }
+
+    float turn = steeringPID.compute();
 
     // Set the motors to the default speed +/- turn
     if(PathRecorder::isDirectionForward(currentDirection))
     {
-      int distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance() - DECELERATION_DISTANCE;
+      int decelDistance = forwardSpeed * CORNER_APPROACH_DISTANCE;
+      int distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance() - DECELERATION_DISTANCE - decelDistance;
       if(PathRecorder::isDirectionForward(nextDirection))
       {
         distanceToGo += pathRecorder.getNextSegmentDistance();
       }
-      int decelDistance = forwardSpeed * CORNER_APPROACH_DISTANCE;
       if(distanceToGo > 0 && distanceToGo <= decelDistance) 
       {
         int speed = (forwardSpeed - cornerSpeed) * distanceToGo / decelDistance + cornerSpeed;
@@ -430,13 +475,19 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
     {
       currentSpeed = cornerSpeed;
       Serial.print("Corner,");
+
+      // Add a bit of feed-forward
+      if(currentDirection == PathRecorder::rightTurn)
+        turn -= FEED_FORWARD;
+      else if(currentDirection == PathRecorder::leftTurn)
+        turn += FEED_FORWARD;
     }
     
-    rightspeed = currentSpeed * (1 + turn);
-    leftspeed = currentSpeed * (1 - turn);
-
-    analogWrite(rmotorPWM, rightspeed >= 0 ? rightspeed : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? leftspeed : 0); // set left motor speed
+    rightspeed = int(currentSpeed * (1 + turn));
+    leftspeed = int(currentSpeed * (1 - turn));
+ 
+    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, playbackRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
@@ -474,13 +525,13 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
 
     // Push through PID controller
     pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
+    float turn = steeringPID.compute();
 
     // Set the motors to the default speed +/- turn
     rightspeed = slowdownSpeed * (1 + turn);
     leftspeed = slowdownSpeed * (1 - turn);
-    analogWrite(rmotorPWM, rightspeed); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed); // set left motor speed
+    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
     
     delay(3);
   }
@@ -496,119 +547,6 @@ void replayRecordedPath(int forwardSpeed, int cornerSpeed, int slowdownSpeed)
   pathRecorder.printPath();
 }
 
-
-// Simple wall-follower function
-//
-void simpleWallFollower(int basespeed) 
-{
-  Serial.print("Wall Follower, speed: "); Serial.println(basespeed);
-  
-  // Set up steering PID
-  float pidInput = 0.0;
-  float pidSetpoint = 0.0;
-  PID steeringPID(PID_Kp, PID_Ki, PID_Kd, &pidInput, &pidSetpoint);
-
-  // Reset everthing
-  encoder_l.reset_count();
-  encoder_r.reset_count();
-  pathRecorder.reset();
-
-  // Set up motor direction
-  digitalWrite(rmotorDIR, HIGH); // set right motor forward
-  digitalWrite(lmotorDIR, LOW); // set left motor forward
-
-  startTime = millis();
-  unsigned long int count = 0;
-
-  // Forward to start line
-  rightspeed = basespeed;
-  leftspeed = basespeed;
-  analogWrite(rmotorPWM, rightspeed); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed); // set left motor speed
-
-  while(true)
-  {
-    photoread();
-#if SENSOR_POLAIRTY_TRUE
-    sensdiff = lfrontsens - wallFollowerTargetDistance;
-    bool forwardBlocked = rfrontsens > wallFollowerForwardAvoidDistance;
-#else
-    sensdiff = wallFollowerTargetDistance - lfrontsens;
-    bool forwardBlocked = rfrontsens < wallFollowerForwardAvoidDistance;
-#endif
-
-    // Push through PID controller
-    pidInput = sensdiff;
-    int turn = (int)steeringPID.compute();
-
-    // Set the motors to the default speed +/- turn
-    if(!forwardBlocked)
-    {
-      rightspeed = basespeed * (1 + turn);
-      leftspeed = basespeed * (1 - turn);
-    }
-    else
-    {
-      // right turn
-      rightspeed = -basespeed * 0.5;
-      leftspeed = basespeed * 0.5;
-    }
-
-    if(rightspeed >= 0)
-    {
-      digitalWrite(rmotorDIR, HIGH); // set right motor forward
-      analogWrite(rmotorPWM, rightspeed); // set right motor speed
-    }
-    else
-    {
-      digitalWrite(rmotorDIR, LOW); // set right motor reverse
-      analogWrite(rmotorPWM, -rightspeed); // set right motor speed
-    }
-
-    if(leftspeed >= 0)
-    {
-      digitalWrite(lmotorDIR, LOW); // set left motor forward
-      analogWrite(lmotorPWM, leftspeed); // set left motor speed
-    }
-    else
-    {
-      digitalWrite(lmotorDIR, HIGH); // set left motor reverse
-      analogWrite(lmotorPWM, -leftspeed); // set left motor speed
-    }
-
-    // light the right hand sensor LED if white line seen by left sensor
-    if (rsidesens > sensorthreshold)
-    {
-      digitalWrite (sensorLED1, HIGH);
-    }
-    else 
-    {
-      digitalWrite (sensorLED1, LOW);
-    }
-    // light the left hand sensor LED if white line seen by left sensor
-    if (lfrontsens > sensorthreshold)
-    {
-      digitalWrite (sensorLED2, HIGH);
-    }
-    else 
-    {
-      digitalWrite (sensorLED2, LOW);
-    }
-    // light the main LED if seen by front sensor
-    if (forwardBlocked)
-    {
-      digitalWrite (indicatorLedBlue, HIGH);
-    }
-    else 
-    {
-      digitalWrite (indicatorLedBlue, LOW);
-    }
-  
-    count++;
-    delay(3);
-  }
-
-}
 
 
 void sensorTest()
@@ -712,11 +650,17 @@ void sensorTest()
 
 void loop() 
 {
-  // Get the base speed from the DIP switches
+  bool altMode = buttonPressed();
+  Serial.print("Mode: "); Serial.println(altMode);
+
+  // Wait for button press and battery voltage ok
+  buttonwait(50); // wait for function button to be pressed
   while(!batterycheck())
   {
     buttonwait(50); // wait for function button to be pressed
   }
+
+  // Get the base speed from the DIP switches
   delay(30);
   functionswitch(); // read function switch value after button released
   basespeed = fnswvalue * 17;
@@ -765,7 +709,12 @@ void loop()
 
   if (fnswvalue > 0) 
   {
-#ifdef LINE_FOLLOWER
+    if(altMode)
+    {
+      //FollowLeftWall();
+      simpleWallFollower(basespeed);
+      return; 
+    }
 
     // Initial run
     followAndRecordPath(basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
@@ -782,10 +731,6 @@ void loop()
       //delay(2000);
       replayRecordedPath(fastRunSpeed, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
     }
-#else
-    FollowLeftWall();
-    //simpleWallFollower(basespeed);
-#endif    
   }
 // if (fnswvalue == 1) 
   else

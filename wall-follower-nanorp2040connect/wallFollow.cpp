@@ -2,6 +2,7 @@
 #include "wallFollow.h"
 #include "motors.h"
 #include "defaults.h"
+#include "pid.h"
 
 // Globals
 Motors motors;
@@ -38,17 +39,20 @@ static MODE_PROFILE_TABLE mode_profiles[] =
     // Ahead 
     forward_speed,
     // Left
-    160, 50, turn_leadin_speed,
-    turn_speed,
-    100, turn_leadout_speed,
+    100, 50, // In Distances
+    turn_leadin_speed, turn_speed,
+    50,      // Out distance
+    turn_leadout_speed,
     // Right
-    160, turn_leadin_speed,
-    turn_speed,
-    100, turn_leadout_speed,
+    40,    // In distance
+    turn_leadin_speed, turn_speed,
+    50,     // Out distance
+    turn_leadout_speed,
     // About turn
-    40, turn_leadin_speed,
-    turn_180_speed,
-    20, turn_leadout_speed
+    40,   // In distance
+    turn_leadin_speed, turn_180_speed,
+    20,   // Out distance
+    turn_leadout_speed
   },
   // Classic maze faster - Blue
   {
@@ -80,7 +84,7 @@ void forward(int distance, int speed)
     while(encoder_r.count() * encode_calibrate_r - start_pos_r < distance &&
           sensorForward() < wall_follow_forward_min_distance)
     {
-      delay(10);
+      delay(loop_speed_ms);
       //Serial.print("FORWARD ");
       //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
       //Serial.println();
@@ -93,7 +97,7 @@ void forward(int distance, int speed)
     motors.forwardPower(-speed);
     while(encoder_r.count() * encode_calibrate_r - start_pos_r > distance)
     {
-      delay(10);
+      delay(loop_speed_ms);
       //Serial.print("FORWARD ");
       //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
       //Serial.println();
@@ -112,9 +116,9 @@ float get_wall_follow_error()
   float newDistR = sensorRight();
   float error;
   if(newDistL > newDistR)
-    error = (newDistL - wall_follow_left_distance) * kp + (newDistL - lastDistL) * kd * interval;
+    error = (newDistL - wall_follow_left_distance) * kp + (newDistL - lastDistL) * kd / interval;
   else if(newDistR > wall_follow_left_distance_min)
-    error = -((newDistR - wall_follow_left_distance) * kp + (newDistR - lastDistR) * kd * interval);
+    error = -((newDistR - wall_follow_left_distance) * kp + (newDistR - lastDistR) * kd / interval);
   else
     // Clamp error if reached a potential gap
     error = 0.0;
@@ -142,9 +146,10 @@ void forward_with_wall_follow(int distance, int speed)
   while(encoder_r.count() * encode_calibrate_r - start_pos_r < distance &&
         sensorForward() < wall_follow_forward_min_distance)
   {
-      logSensors("FORWARD-FOLLOW");
-      motors.turn(speed, -get_wall_follow_error());
+      delay(loop_speed_ms);
       photoread();
+      motors.turn(speed, -get_wall_follow_error());
+      logSensors("FORWARD-FOLLOW");
   }
 }
 
@@ -153,17 +158,17 @@ void turn_left_90(int speed)
 //  motors.stop();
 //  delay(500);
  
-  // Rotate 90 degrees
+  // Rotate 90 degrees about left wheel
   float start_pos_l = encoder_l.count() * encode_calibrate_l;
   float start_pos_r = encoder_r.count() * encode_calibrate_r;
   motors.turn(speed, speed);
 
-  int required_dist_r = (int)(3.14159/2.0 * turning_diameter_mm) - turn_angle_inertia_compensation;
+  int required_dist_r = (int)(3.14159/2.0 * turning_diameter_mm * turn_left_angle_inertia_compensation);
   
   while(encoder_r.count() * encode_calibrate_r - start_pos_r < 
-        (encoder_l.count() * encode_calibrate_l - start_pos_l + required_dist_r))
+        required_dist_r + (encoder_l.count() * encode_calibrate_l - start_pos_l))
   {
-    delay(10);
+    delay(loop_speed_ms);
     //Serial.print("LEFT ");
     //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
     //Serial.print(encoder_l.count() * encode_calibrate_r);  Serial.print("mm ");
@@ -171,25 +176,26 @@ void turn_left_90(int speed)
     photoread();
     logSensors("LEFT90");
   }
-//  motors.stop();
-//  delay(500);
+
+  motors.stop();
+  delay(400);
 }
 
 void turn_right_90(int speed)
 {
 //  motors.stop();
 //  delay(500);
-  // Rotate 90 degrees
+  // Rotate 90 degrees about right wheel
   float start_pos_l = encoder_l.count() * encode_calibrate_l;
   float start_pos_r = encoder_r.count() * encode_calibrate_r;
   motors.turn(speed, -speed);
 
-  int required_dist_l = (int)(3.14159/2.0 * turning_diameter_mm) - turn_angle_inertia_compensation;
+  int required_dist_l = (int)(3.14159/2.0 * turning_diameter_mm * turn_right_angle_inertia_compensation);
   
   while(encoder_l.count() * encode_calibrate_l - start_pos_l < 
-        (encoder_r.count() * encode_calibrate_r - start_pos_r + required_dist_l))
+        required_dist_l + (encoder_r.count() * encode_calibrate_r - start_pos_r))
   {
-    delay(10);
+    delay(loop_speed_ms);
     //Serial.print("RIGHT ");
     //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
     //Serial.print(encoder_l.count() * encode_calibrate_r);  Serial.print("mm ");
@@ -197,30 +203,33 @@ void turn_right_90(int speed)
     photoread();
     logSensors("RIGHT90");
   }
-//  motors.stop();
-//  delay(500);
+
+  motors.stop();
+  delay(400);
 }
 
 void turn_right_180(int speed)
 {
-//  motors.stop();
-//  delay(500);
-  // Rotate 90 degrees
+  motors.stop();
+  delay(100);
+
+  // Rotate 180 degrees about centre axis
   float start_pos_l = encoder_l.count() * encode_calibrate_l;
   float start_pos_r = encoder_r.count() * encode_calibrate_r;
   motors.turn(0, -speed);
 
-  int required_dist_l = (int)(3.14159 * turning_diameter_mm) - turn_angle_inertia_compensation;
+  int required_dist_total = (int)(3.14159 * turning_diameter_mm * turn_right180_angle_inertia_compensation);
   
-  while(encoder_l.count() * encode_calibrate_l - start_pos_l <
-        (encoder_r.count() * encode_calibrate_r - start_pos_r + required_dist_l))
+  while((encoder_l.count() * encode_calibrate_l - start_pos_l) - (encoder_r.count() * encode_calibrate_r - start_pos_r) <
+        required_dist_total)
   {
-    delay(10);
+    delay(loop_speed_ms);
     photoread();
     logSensors("RIGHT180");
   }
-//  motors.stop();
-//  delay(500);
+
+  motors.stop();
+  delay(500);
 }
 
 
@@ -264,17 +273,160 @@ void logSensors(const char *mode)
   DebugPort.println();
 }
 
+void testMovesForCalibrate()
+{
+/*
+  // Zero encoders
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  // Forward 500mm
+  forward(500, 64);
+
+  // Stop
+  motors.stop();
+  delay(500);
+
+  // Display results
+  logSensors("FORWARD 500mm");
+
+  long f500_pos_l = encoder_l.count();
+  long f500_pos_r = encoder_r.count();
+
+  DebugPort.print("FORWARD 500mm: ");
+  DebugPort.print(f500_pos_l * encode_calibrate_l);  DebugPort.print("mm,");
+  DebugPort.print(f500_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+  
+  // Wait for button
+  buttonwait(50); // wait for function button to be pressed
+  delay(1000);
+*/
+
+  // Zero encoders
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  // Forward 500mm
+  //for(int i = 0; i <100; i++)
+  //  forward_with_wall_follow(5, 64);
+  forward(500, 64);
+  long f500_1_pos_l = encoder_l.count();
+  long f500_1_pos_r = encoder_r.count();
+
+//  motors.stop();
+//  delay(100);
+
+  // Zero encoders
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  turn_left_90(32);
+  long l90_2_pos_l = encoder_l.count();
+  long l90_2_pos_r = encoder_r.count();
+
+ // motors.stop();
+ // delay(400);
+
+  // Zero encoders
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  forward(500, 64);
+
+  long f500_3_pos_l = encoder_l.count();
+  long f500_3_pos_r = encoder_r.count();
+
+//  motors.stop();
+//  delay(100);
+
+  // Zero encoders
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  turn_right_90(32);
+  long r90_4_pos_l = encoder_l.count();
+  long r90_4_pos_r = encoder_r.count();
+
+//  motors.stop();
+//  delay(400);
+
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+
+  forward(500, 64);
+//  motors.stop();
+//  delay(500);
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+  turn_right_180(32);
+//  motors.stop();
+//  delay(500);
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+  forward(500, 64);
+
+  // Stop
+  // Zero encoders
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+  motors.stop();
+
+  delay(500);
+  
+  // Display results
+  logSensors("FORWARD 500mm/LEFT 90/Forward 500mm");
+
+  long f500_l90_f500_pos_l = encoder_l.count();
+  long f500_l90_f500_pos_r = encoder_r.count();
+
+  DebugPort.print("FORWARD 500mm/LEFT 90/Forward 500mm: ");
+  DebugPort.print(f500_l90_f500_pos_l * encode_calibrate_l);  DebugPort.print("mm, ");
+  DebugPort.print(f500_l90_f500_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+
+  // Wait for button
+  buttonwait(50); // wait for function button to be pressed
+
+  // Display again
+/*  
+  DebugPort.print("FORWARD 500mm: ");
+  DebugPort.print(f500_pos_l * encode_calibrate_l);  DebugPort.print("mm,");
+  DebugPort.print(f500_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+  */
+
+  DebugPort.print("FORWARD 500mm/LEFT 90/Forward 500mm: ");
+  DebugPort.print(f500_1_pos_l * encode_calibrate_l);  DebugPort.print("mm, ");
+  DebugPort.print(f500_1_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+  DebugPort.print(l90_2_pos_l * encode_calibrate_l);  DebugPort.print("mm, ");
+  DebugPort.print(l90_2_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+  DebugPort.print(f500_3_pos_l * encode_calibrate_l);  DebugPort.print("mm, ");
+  DebugPort.print(f500_3_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+  DebugPort.print(f500_l90_f500_pos_l * encode_calibrate_l);  DebugPort.print("mm, ");
+  DebugPort.print(f500_l90_f500_pos_r * encode_calibrate_r);  DebugPort.println("mm");
+  
+}
+
 // Follow the left wall, return TRUE if successful
 bool FollowLeftWall()
 {
+    // Wait for button
+    buttonwait(50); // wait for function button to be pressed
+
+    // Ensure all LEDs off
+    digitalWrite(sensorLED1, 0);
+    digitalWrite(sensorLED2, 0);
+    digitalWrite(indicatorLedBlue, 0);
+
+    delay(1000);
+ 
+    //testMovesForCalibrate();
+    //return false;
+
     // Wall follower approach
     // 1) Forward until gap seen on left or blocked ahead
     // 2) Continue to centre of cell (10cm)
     // 3) If gap to left, turn 90deg left then forward 10cm
     // 4) If blocked ahead and open to right, turn 90deg right then foward 10cm
     // 5) else about turn
-
-    delay(500);
 
     // Go
     bool justTurned = false;
@@ -309,12 +461,15 @@ bool FollowLeftWall()
           }          
 
           // Turn
-          turn_left_90(mode_profiles[mode].left_leadin_speed);
+          turn_left_90(mode_profiles[mode].left_turn_speed);
+
+          digitalWrite(sensorLED1, 1);
 
           // Straighten up
           reset_PID();
           forward(mode_profiles[mode].left_leadout_distance, mode_profiles[mode].left_leadout_speed);
           
+          digitalWrite(sensorLED1, 0);
           digitalWrite(sensorLED2, 0);
 
           // Reset PID
@@ -336,12 +491,16 @@ bool FollowLeftWall()
   //motors.stop();
   //delay(500);
             forward(mode_profiles[mode].right_leadin_distance, mode_profiles[mode].right_leadin_speed); // Will stop if gets too close
+
             turn_right_90(mode_profiles[mode].right_turn_speed);
+
+            digitalWrite(sensorLED2, 1);
 
             // We will have a left wall, follow it
             reset_PID();
             forward_with_wall_follow(mode_profiles[mode].right_leadout_distance, mode_profiles[mode].right_leadout_speed);
 
+            digitalWrite(sensorLED2, 0);
             digitalWrite(sensorLED1, 0);
           }
           else
@@ -353,13 +512,19 @@ bool FollowLeftWall()
   //motors.stop();
   //delay(500);
 
-            forward(mode_profiles[mode].about_leadin_distance, mode_profiles[mode].about_leadin_speed); // Will stop if gets too close
+            forward_with_wall_follow(mode_profiles[mode].about_leadin_distance, mode_profiles[mode].about_leadin_speed); // Will stop if gets too close
+
             turn_right_180(mode_profiles[mode].about_turn_speed);
+
+            digitalWrite(sensorLED1, 1);
+            digitalWrite(sensorLED2, 1);
 
             // We will have a left wall, follow it
             reset_PID();
             forward_with_wall_follow(mode_profiles[mode].about_leadout_distance, mode_profiles[mode].about_leadout_speed);
 
+            digitalWrite(sensorLED1, 0);
+            digitalWrite(sensorLED2, 0);
             digitalWrite(indicatorLedBlue, 0);
           }
 
@@ -380,3 +545,116 @@ bool FollowLeftWall()
     // Success
     return true;
 }
+
+// Simple wall-follower function
+//
+void simpleWallFollower(int basespeed) 
+{
+  int sensdiff = 0;
+
+  Serial.print("Wall Follower, speed: "); Serial.println(basespeed);
+  
+  // Set up steering PID
+  float pidInput = 0.0;
+  float pidSetpoint = 0.0;
+  PID steeringPID(wall_follow_kp, 0, wall_follow_kd, &pidInput, &pidSetpoint);
+
+  // Reset everthing
+  encoder_l.reset_count();
+  encoder_r.reset_count();
+ 
+  // Indicators
+  digitalWrite (indicatorLedBlue, LOW);
+
+  // Set up motor direction
+  digitalWrite(rmotorDIR, HIGH); // set right motor forward
+  digitalWrite(lmotorDIR, LOW); // set left motor forward
+
+  // Forward to start line
+  rightspeed = basespeed;
+  leftspeed = basespeed;
+  analogWrite(rmotorPWM, rightspeed); // set right motor speed
+  analogWrite(lmotorPWM, leftspeed); // set left motor speed
+
+  while(true)
+  {
+    photoread();
+    sensdiff = lfrontsens - wallFollowerTargetDistance;
+    bool forwardBlocked = rfrontsens > wallFollowerForwardAvoidDistance;
+
+    static float sensdiffFitered;
+    sensdiffFitered = sensdiffFitered * 0.5 + sensdiff * 0.5;
+
+    //Serial.println(sensdiff);
+
+    // Push through PID controller
+    pidInput = sensdiffFitered;
+    int turn = (int)steeringPID.compute();
+
+    // Set the motors to the default speed +/- turn
+    if(!forwardBlocked)
+    {
+      rightspeed = basespeed * (1 + turn);
+      leftspeed = basespeed * (1 - turn);
+    }
+    else
+    {
+      // right turn
+      rightspeed = -basespeed * 0.6;
+      leftspeed = basespeed * 0.4;
+    }
+
+    if(rightspeed >= 0)
+    {
+      digitalWrite(rmotorDIR, HIGH); // set right motor forward
+      analogWrite(rmotorPWM, rightspeed); // set right motor speed
+    }
+    else
+    {
+      digitalWrite(rmotorDIR, LOW); // set right motor reverse
+      analogWrite(rmotorPWM, -rightspeed); // set right motor speed
+    }
+
+    if(leftspeed >= 0)
+    {
+      digitalWrite(lmotorDIR, LOW); // set left motor forward
+      analogWrite(lmotorPWM, leftspeed); // set left motor speed
+    }
+    else
+    {
+      digitalWrite(lmotorDIR, HIGH); // set left motor reverse
+      analogWrite(lmotorPWM, -leftspeed); // set left motor speed
+    }
+
+    // light the right hand sensor LED if white line seen by left sensor
+    if (rsidesens > sensorthreshold)
+    {
+      digitalWrite (sensorLED1, HIGH);
+    }
+    else 
+    {
+      digitalWrite (sensorLED1, LOW);
+    }
+    // light the left hand sensor LED if white line seen by left sensor
+    if (lfrontsens > sensorthreshold)
+    {
+      digitalWrite (sensorLED2, HIGH);
+    }
+    else 
+    {
+      digitalWrite (sensorLED2, LOW);
+    }
+    // light the main LED if seen by front sensor
+    if (forwardBlocked)
+    {
+      digitalWrite (indicatorLedBlue, HIGH);
+    }
+    else 
+    {
+      digitalWrite (indicatorLedBlue, LOW);
+    }
+  
+    delay(3);
+  }
+}
+

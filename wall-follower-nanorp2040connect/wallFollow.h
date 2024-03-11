@@ -6,8 +6,10 @@
 
 // Follow the left wall, return TRUE if successful
 extern bool FollowLeftWall();
+extern void simpleWallFollower(int basespeed);
 
 // Support methods
+extern void buttonwait(int period);
 extern void photoread();
 extern void logSensors(const char *mode);
 
