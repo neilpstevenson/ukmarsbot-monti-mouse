@@ -10,7 +10,7 @@ extern void simpleWallFollower(int basespeed);
 
 // Support methods
 extern void buttonwait(int period);
-extern void photoread();
+extern void photoread(bool polarity);
 extern void logSensors(const char *mode);
 
 extern int rightspeed;

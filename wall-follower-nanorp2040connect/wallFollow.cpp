@@ -88,7 +88,7 @@ void forward(int distance, int speed)
       //Serial.print("FORWARD ");
       //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
       //Serial.println();
-      photoread();
+      photoread(true);
       logSensors("FORWARD");
     }
   }
@@ -101,7 +101,7 @@ void forward(int distance, int speed)
       //Serial.print("FORWARD ");
       //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
       //Serial.println();
-      photoread();
+      photoread(true);
       logSensors("REVERSE");
     }
   }
@@ -147,7 +147,7 @@ void forward_with_wall_follow(int distance, int speed)
         sensorForward() < wall_follow_forward_min_distance)
   {
       delay(loop_speed_ms);
-      photoread();
+      photoread(true);
       motors.turn(speed, -get_wall_follow_error());
       logSensors("FORWARD-FOLLOW");
   }
@@ -173,7 +173,7 @@ void turn_left_90(int speed)
     //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
     //Serial.print(encoder_l.count() * encode_calibrate_r);  Serial.print("mm ");
     //Serial.println();
-    photoread();
+    photoread(true);
     logSensors("LEFT90");
   }
 
@@ -200,7 +200,7 @@ void turn_right_90(int speed)
     //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
     //Serial.print(encoder_l.count() * encode_calibrate_r);  Serial.print("mm ");
     //Serial.println();
-    photoread();
+    photoread(true);
     logSensors("RIGHT90");
   }
 
@@ -224,7 +224,7 @@ void turn_right_180(int speed)
         required_dist_total)
   {
     delay(loop_speed_ms);
-    photoread();
+    photoread(true);
     logSensors("RIGHT180");
   }
 
@@ -439,7 +439,7 @@ bool FollowLeftWall()
 
     while(true) 
     {
-        photoread();
+        photoread(true);
 //        sensors.waitForSample();
         
         // Gap on left?
@@ -551,6 +551,7 @@ bool FollowLeftWall()
 void simpleWallFollower(int basespeed) 
 {
   int sensdiff = 0;
+  int leftTurnCount = 0;
 
   Serial.print("Wall Follower, speed: "); Serial.println(basespeed);
   
@@ -578,32 +579,57 @@ void simpleWallFollower(int basespeed)
 
   while(true)
   {
-    photoread();
+    photoread(true);
     sensdiff = lfrontsens - wallFollowerTargetDistance;
     bool forwardBlocked = rfrontsens > wallFollowerForwardAvoidDistance;
+    bool leftGap = lfrontsens < wallFollowerLeftGapThreshold;
 
     static float sensdiffFitered;
     sensdiffFitered = sensdiffFitered * 0.5 + sensdiff * 0.5;
 
+    //Serial.println(lfrontsens);
     //Serial.println(sensdiff);
 
     // Push through PID controller
     pidInput = sensdiffFitered;
-    int turn = (int)steeringPID.compute();
+    float turn = steeringPID.compute();
 
     // Set the motors to the default speed +/- turn
-    if(!forwardBlocked)
+    if(!leftGap)
     {
-      rightspeed = basespeed * (1 + turn);
-      leftspeed = basespeed * (1 - turn);
+      if(!forwardBlocked)
+      {
+        // Keep on following left wall
+        rightspeed = int(basespeed * (1 + turn));
+        leftspeed = int(basespeed * (1 - turn));
+
+        // We've seen a wall, reset the coast counter
+        leftTurnCount = 0;
+      }
+      else
+      {
+        // Blocked ahead - turn right
+        rightspeed = -int(basespeed * 0.8);
+        leftspeed = int(basespeed * 0.7);
+
+        // May need a very short turn
+        leftTurnCount = wallFollowerLeftTurnDelay;
+      }
+    }
+    else if(++leftTurnCount <= wallFollowerLeftTurnDelay)
+    {
+      // Gap on left, but keep going ahead a small amount first
+      rightspeed = int(basespeed * 1.0);
+      leftspeed = int(basespeed * 0.5);
     }
     else
     {
-      // right turn
-      rightspeed = -basespeed * 0.6;
-      leftspeed = basespeed * 0.4;
+      // Gap on left, turn into it now
+      rightspeed = int(basespeed * (1 + turn));
+      leftspeed = int(basespeed * (1 - turn));
     }
 
+    // Update motors
     if(rightspeed >= 0)
     {
       digitalWrite(rmotorDIR, HIGH); // set right motor forward

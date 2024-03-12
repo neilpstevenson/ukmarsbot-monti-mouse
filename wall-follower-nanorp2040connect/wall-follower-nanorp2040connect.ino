@@ -167,7 +167,7 @@ bool batterycheck()
   return false;
 } // end of batterycheck function
 
-void photoread()
+void photoread(bool polarity = SENSOR_POLAIRTY_TRUE)
 {
   // read both line sensors & start/stop sensor
   int lfrontsensAmbient = analogRead(lfront);
@@ -189,17 +189,20 @@ void photoread()
   digitalWrite(trigger, LOW);  // Sensor illumination LEDs off
 
 // Remove ambient light level
-#if SENSOR_POLAIRTY_TRUE
-  lfrontsens = lfrontsens > lfrontsensAmbient ? lfrontsens - lfrontsensAmbient : 0;
-  rfrontsens = rfrontsens > rfrontsensAmbient ? rfrontsens - rfrontsensAmbient : 0;
-  rsidesens = rsidesens > rsidesensAmbient ? rsidesens - rsidesensAmbient : 0;
-  lsidesens = lsidesens > lsidesensAmbient ? lsidesens - lsidesensAmbient : 0;
-#else
-  lfrontsens = lfrontsens < lfrontsensAmbient ? lfrontsens + (1023 - lfrontsensAmbient) : 1023;
-  rfrontsens = rfrontsens < rfrontsensAmbient ? rfrontsens + (1023 - rfrontsensAmbient) : 1023;
-  rsidesens = rsidesens < rsidesensAmbient ? rsidesens + (1023 - rsidesensAmbient) : 1023;
-  lsidesens = lsidesens < lsidesensAmbient ? lsidesens + (1023 - lsidesensAmbient) : 1023;
-#endif
+  if(polarity)
+  {
+    lfrontsens = lfrontsens > lfrontsensAmbient ? lfrontsens - lfrontsensAmbient : 0;
+    rfrontsens = rfrontsens > rfrontsensAmbient ? rfrontsens - rfrontsensAmbient : 0;
+    rsidesens = rsidesens > rsidesensAmbient ? rsidesens - rsidesensAmbient : 0;
+    lsidesens = lsidesens > lsidesensAmbient ? lsidesens - lsidesensAmbient : 0;
+  }
+  else
+  {
+    lfrontsens = lfrontsens < lfrontsensAmbient ? lfrontsens + (1023 - lfrontsensAmbient) : 1023;
+    rfrontsens = rfrontsens < rfrontsensAmbient ? rfrontsens + (1023 - rfrontsensAmbient) : 1023;
+    rsidesens = rsidesens < rsidesensAmbient ? rsidesens + (1023 - rsidesensAmbient) : 1023;
+    lsidesens = lsidesens < lsidesensAmbient ? lsidesens + (1023 - lsidesensAmbient) : 1023;
+  }
 
 #ifdef LEDS_FROM_SENSORS
   // light the right hand sensor LED if white line seen by left sensor
@@ -654,16 +657,16 @@ void loop()
   Serial.print("Mode: "); Serial.println(altMode);
 
   // Wait for button press and battery voltage ok
-  buttonwait(50); // wait for function button to be pressed
+  buttonwait(altMode ? 25 : 50); // wait for function button to be pressed
   while(!batterycheck())
   {
-    buttonwait(50); // wait for function button to be pressed
+    buttonwait(10); // wait for function button to be pressed
   }
 
   // Get the base speed from the DIP switches
   delay(30);
   functionswitch(); // read function switch value after button released
-  basespeed = fnswvalue * 17;
+  basespeed = fnswvalue * 8;
   if(basespeed < MIN_BASE_SPEED)
     basespeed = MIN_BASE_SPEED;
 
