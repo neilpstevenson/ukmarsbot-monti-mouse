@@ -8,18 +8,6 @@
 extern bool FollowLeftWall();
 extern void simpleWallFollower(int basespeed);
 
-// Support methods
-extern void buttonwait(int period);
-extern void photoread(bool polarity);
-extern void logSensors(const char *mode);
-
-extern int rightspeed;
-extern int leftspeed;
-
-extern int lfrontsens;
-extern int rsidesens;
-extern int rfrontsens;
-
 // Encoders
 extern Quadrature_encoder<m1encoder2, m1encoder1> encoder_l;
 extern Quadrature_encoder<m2encoder2, m2encoder1> encoder_r;

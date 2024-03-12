@@ -10,26 +10,42 @@ const int ILLUMINATION_ON_TIME_uS = 100;
 
 const float ENCODER_CALIBRATION = 1.7;  // Counts to mm
 
+static const float motor_compensation_left = 1.00;  // When motor goes in one direction, it tends to go faster than the other
+static const float motor_compensation_right = 0.983;
+
 // Tolerances etc. all in mm
 const int CROSSOVER_TOLERANCE = 30;
 const int STRAIGHT_LINE_TOLERANCE = 4;
 const int SEGMENT_START_DEFERRED_DISTANCE = 30; // We get this much into a segment before recording the distance (allows for straightening up etc)
-const int ACCELERATION_DISTANCE = 60;
-const int DECELERATION_DISTANCE = 60; //150;
-const float CORNER_APPROACH_DISTANCE = 0.9; // Distance in mm * speed
-const int STOP_DISTANCE = 80 - CROSSOVER_TOLERANCE;
 
-// PID values
+// PID max result
+#define MAX_MOTOR_VOLTS 1
+
+// Loop values
 const float LOOP_INTERVAL = 0.003;  // 3mS
 const float LOOP_FREQUENCY = 1/LOOP_INTERVAL;  // Hz
-#define MAX_MOTOR_VOLTS 1
-const float PID_Kp = 0.012; //0.03; //0.012; // 0.015;    // 0.03 old 1/2 size board
-const float PID_Ki = 0.0;
-const float PID_Kd = 0.001; //0.002; // 0.001;  // 0.0025 old 1/2 size board
-const float FEED_FORWARD = 0.0; // speed increase fraction
 
 // Marker thresholds
 const int markerLowThreshold = 740; //250; //850; //700; // e.g. 740 for white 1/2 size board, 250 for old full-size or half-size board, 850 for neil's new inverted board
 const int markerHighThreshold = markerLowThreshold+20;
 
 const int sensorthreshold = (markerLowThreshold + markerHighThreshold)/2; // LED illumination threshold
+
+// Support methods
+extern void buttonwait(int period);
+extern void photoread(bool polarity = SENSOR_POLAIRTY_TRUE);
+extern void logSensors(const char *mode);
+extern void functionswitch();
+extern void stopmotors();
+extern bool batterycheck();
+
+extern int rightspeed;
+extern int leftspeed;
+
+extern int lfrontsens;
+extern int lsidesens;
+extern int rsidesens;
+extern int rfrontsens;
+extern int sensdiff;
+
+extern int fnswvalue;

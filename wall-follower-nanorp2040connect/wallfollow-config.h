@@ -16,9 +16,6 @@ static const float sensor_calibrate_r = 0.29;
 static const float encode_calibrate_l = -1.510; // smaller = bigger turns
 static const float encode_calibrate_r = 1.500;
 
-static const float motor_compensation_left = 1.00;  // When motor goes in one direction, it tends to go faster than the other
-static const float motor_compensation_right = 0.983;
-
 static const float turn_left_angle_inertia_compensation = 0.8; // End the turns this much short, to allow for inertia taking it the rest of the way
 static const float turn_right_angle_inertia_compensation = 0.70; 
 static const float turn_right180_angle_inertia_compensation = 0.95;

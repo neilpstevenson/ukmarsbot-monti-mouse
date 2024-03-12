@@ -1,7 +1,7 @@
 #include "Arduino.h"
+#include "defaults.h"
 #include "wallFollow.h"
 #include "motors.h"
-#include "defaults.h"
 #include "pid.h"
 
 // Globals
