@@ -6,7 +6,7 @@
 const int ACCELERATION_DISTANCE = 20;
 //const int DECELERATION_DISTANCE = 200; //150;
 const float DECELERATION_FACTOR = 0.5;      // Distance allowed to ramp down the speed approaching a corner, in mm * speed
-const float CORNER_DECL_COAST_FACTOR = 3.0; // Distance after deceleratoin to coast to stabilise speed, in mm * speed
+const float CORNER_DECL_COAST_FACTOR = 4.0; // Distance after deceleratoin to coast to stabilise speed, in mm * speed
 const int STOP_DISTANCE = 80 - CROSSOVER_TOLERANCE;
 
 // PID values

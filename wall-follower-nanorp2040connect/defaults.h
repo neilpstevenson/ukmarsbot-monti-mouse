@@ -11,7 +11,7 @@ const int ILLUMINATION_ON_TIME_uS = 100;
 const float ENCODER_CALIBRATION = 1.7;  // Counts to mm
 
 static const float motor_compensation_left = 1.00;  // When motor goes in one direction, it tends to go faster than the other
-static const float motor_compensation_right = 0.983;
+static const float motor_compensation_right = 1.00; //0.983;
 
 // Tolerances etc. all in mm
 const int CROSSOVER_TOLERANCE = 30;

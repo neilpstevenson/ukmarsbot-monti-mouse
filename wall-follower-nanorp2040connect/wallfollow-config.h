@@ -52,9 +52,9 @@ static const int sensor_right_min_raw = 7000;
 static const int sensor_right_max_raw = 12000;
 
 // For simple follower
-const int wallFollowerTargetDistance = 350; 
+const int wallFollowerTargetDistance = 360; 
 const int wallFollowerForwardAvoidDistance = 230; 
-const int wallFollowerLeftGapThreshold = 150; 
+const int wallFollowerLeftGapThreshold = 200; 
 const int wallFollowerLeftTurnDelay = 40;   // Loops before we turn, to prevent colliding with wall
 
 // General

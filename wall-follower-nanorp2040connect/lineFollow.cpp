@@ -214,8 +214,8 @@ void replayRecordedPath(int forwardSpeed, int cornerApproachSpeed, int cornerSpe
     // Set the motors to the default speed +/- turn
     if(PathRecorder::isDirectionForward(currentDirection))
     {
-      long decelCoastDistance = currentSpeed * CORNER_DECL_COAST_FACTOR;
-      long decelDistance = currentSpeed * DECELERATION_FACTOR;
+      long decelCoastDistance = (forwardSpeed - cornerApproachSpeed) * CORNER_DECL_COAST_FACTOR;
+      long decelDistance = (forwardSpeed - cornerApproachSpeed) * DECELERATION_FACTOR;
       long distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance() - decelCoastDistance;
       if(PathRecorder::isDirectionForward(nextDirection))
       {

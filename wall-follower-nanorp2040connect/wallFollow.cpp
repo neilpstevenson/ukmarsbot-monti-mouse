@@ -605,28 +605,45 @@ void simpleWallFollower(int basespeed)
 
         // We've seen a wall, reset the coast counter
         leftTurnCount = 0;
+
+        digitalWrite (sensorLED1, LOW);  // Right/Red LED
+        digitalWrite (sensorLED2, LOW);   // Left/Green LED
+        digitalWrite (indicatorLedBlue, LOW);  // Centre/Blue LED
       }
       else
       {
         // Blocked ahead - turn right
         rightspeed = -int(basespeed * 0.8);
-        leftspeed = int(basespeed * 0.7);
+        leftspeed = int(basespeed * 0.9);
 
         // May need a very short turn
         leftTurnCount = wallFollowerLeftTurnDelay;
+
+        digitalWrite (sensorLED1, HIGH);  // Right/Red LED
+        digitalWrite (sensorLED2, LOW);   // Left/Green LED
+        digitalWrite (indicatorLedBlue, LOW);  // Centre/Blue LED
       }
     }
     else if(++leftTurnCount <= wallFollowerLeftTurnDelay)
     {
       // Gap on left, but keep going ahead a small amount first
-      rightspeed = int(basespeed * 1.0);
-      leftspeed = int(basespeed * 0.5);
+      // slightly right
+      rightspeed = int(basespeed * 0.95);
+      leftspeed = int(basespeed);
+
+      digitalWrite (sensorLED1, LOW);  // Right/Red LED
+      digitalWrite (sensorLED2, HIGH);   // Left/Green LED
+      digitalWrite (indicatorLedBlue, HIGH);  // Centre/Blue LED
     }
     else
     {
       // Gap on left, turn into it now
-      rightspeed = int(basespeed * (1 + turn));
-      leftspeed = int(basespeed * (1 - turn));
+      rightspeed = int(basespeed * 1.3);
+      leftspeed = int(basespeed * 0.2);
+
+      digitalWrite (sensorLED1, LOW);  // Right/Red LED
+      digitalWrite (sensorLED2, HIGH);   // Left/Green LED
+      digitalWrite (indicatorLedBlue, LOW);  // Centre/Blue LED
     }
 
     // Update motors
@@ -652,34 +669,6 @@ void simpleWallFollower(int basespeed)
       analogWrite(lmotorPWM, -leftspeed); // set left motor speed
     }
 
-    // light the right hand sensor LED if white line seen by left sensor
-    if (rsidesens > sensorthreshold)
-    {
-      digitalWrite (sensorLED1, HIGH);
-    }
-    else 
-    {
-      digitalWrite (sensorLED1, LOW);
-    }
-    // light the left hand sensor LED if white line seen by left sensor
-    if (lfrontsens > sensorthreshold)
-    {
-      digitalWrite (sensorLED2, HIGH);
-    }
-    else 
-    {
-      digitalWrite (sensorLED2, LOW);
-    }
-    // light the main LED if seen by front sensor
-    if (forwardBlocked)
-    {
-      digitalWrite (indicatorLedBlue, HIGH);
-    }
-    else 
-    {
-      digitalWrite (indicatorLedBlue, LOW);
-    }
-  
     delay(3);
   }
 }
