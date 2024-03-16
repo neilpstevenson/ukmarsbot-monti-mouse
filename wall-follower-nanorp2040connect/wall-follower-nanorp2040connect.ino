@@ -3,6 +3,7 @@
 #include "ukmarsbot-pins.h"
 #include "wallFollow.h"
 #include "lineFollow.h"
+#include "calibrate.h"
 
 int basespeed = MIN_BASE_SPEED; //Base speed (constant)
 
@@ -275,7 +276,7 @@ void sensorTest()
 #endif
 
     // light the right hand sensor LED if white line seen by left sensor
-    if (rsidesens > sensorthreshold)
+    if (rsidesens > markerLowThreshold)
     {
       digitalWrite (sensorLED1, HIGH);
     }
@@ -284,7 +285,7 @@ void sensorTest()
       digitalWrite (sensorLED1, LOW);
     }
     // light the left hand sensor LED if white line seen by left sensor
-    if (lfrontsens > sensorthreshold)
+    if (lfrontsens > markerLowThreshold)
     {
       digitalWrite (sensorLED2, HIGH);
     }
@@ -293,7 +294,7 @@ void sensorTest()
       digitalWrite (sensorLED2, LOW);
     }
     // light the main LED if seen by front sensor
-    if (rfrontsens > sensorthreshold)
+    if (rfrontsens > markerLowThreshold)
     {
       digitalWrite (indicatorLedBlue, HIGH);
     }
@@ -393,7 +394,7 @@ void loop()
   delay(30);
 #endif
 
-  if (fnswvalue > 0) 
+  if (fnswvalue > 1) 
   {
     if(altMode)
     {
@@ -407,6 +408,8 @@ void loop()
     }
   }
 // if (fnswvalue == 1) 
+  else if (fnswvalue == 1)
+    calibrateSensors(); 
   else
     sensorTest();
 }

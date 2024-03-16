@@ -9,12 +9,12 @@ PathRecorder::PathRecorder() :
     lastPositionRight(0),
     #if SENSOR_POLAIRTY_TRUE
     // New sensor board
-    startFinish(markerLowThreshold, markerHighThreshold, true),
-    radiusMarker(markerLowThreshold, markerHighThreshold, true)
+    startFinish(markerLowThreshold, markerLowThreshold + 20, true),
+    radiusMarker(markerLowThreshold, markerLowThreshold + 20, true)
     #else
     // UKMARSBOT board
-    startFinish(markerLowThreshold, markerHighThreshold, false),
-    radiusMarker(markerLowThreshold, markerHighThreshold, false)
+    startFinish(markerLowThreshold, markerLowThreshold + 20, false),
+    radiusMarker(markerLowThreshold, markerLowThreshold  + 20, false)
     #endif
 {
 

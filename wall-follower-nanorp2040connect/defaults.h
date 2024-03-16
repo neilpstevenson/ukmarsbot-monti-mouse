@@ -26,12 +26,14 @@ const float LOOP_INTERVAL = 0.003;  // 3mS
 const float LOOP_FREQUENCY = 1/LOOP_INTERVAL;  // Hz
 
 // Marker thresholds
-const int markerLowThreshold = 740; //250; //850; //700; // e.g. 740 for white 1/2 size board, 250 for old full-size or half-size board, 850 for neil's new inverted board
-const int markerHighThreshold = markerLowThreshold+20;
+const int defaultMarkerLowThreshold = 740; //250; //850; //700; // e.g. 740 for white 1/2 size board, 250 for old full-size or half-size board, 850 for neil's new inverted board
+extern int markerLowThreshold;
+//const int markerHighThreshold = markerLowThreshold+20;
 
-const int sensorthreshold = (markerLowThreshold + markerHighThreshold)/2; // LED illumination threshold
+//const int sensorthreshold = (markerLowThreshold + markerHighThreshold)/2; // LED illumination threshold
 
 // Support methods
+extern bool buttonPressed();
 extern void buttonwait(int period);
 extern void photoread(bool polarity = SENSOR_POLAIRTY_TRUE);
 extern void logSensors(const char *mode);

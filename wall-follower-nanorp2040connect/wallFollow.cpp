@@ -599,6 +599,8 @@ void simpleWallFollower(int basespeed)
     {
       if(!forwardBlocked)
       {
+        // Limit the turn to 20%
+        turn = std::max(std::min(turn, 0.2F), -0.2F);
         // Keep on following left wall
         rightspeed = int(basespeed * (1 + turn));
         leftspeed = int(basespeed * (1 - turn));

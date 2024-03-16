@@ -7,12 +7,11 @@
 
 unsigned long int endTime = 0;
 unsigned long int startTime = 0;
-
-PathRecorder pathRecorder;
+int markerLowThreshold = defaultMarkerLowThreshold;
 
 // Initial line follower function, recording what it sees along the way
 //
-void followAndRecordPath(int basespeed, int slowdownSpeed) 
+void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdownSpeed) 
 {
   Serial.print("Base speed: "); Serial.println(basespeed);
   Serial.print("Slowdown speed: "); Serial.println(slowdownSpeed);
@@ -129,7 +128,7 @@ void followAndRecordPath(int basespeed, int slowdownSpeed)
 
 // Line follow, using path knowledge previously recorded
 //
-void replayRecordedPath(int forwardSpeed, int cornerApproachSpeed, int cornerSpeed, int slowdownSpeed)
+void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int cornerApproachSpeed, int cornerSpeed, int slowdownSpeed)
 {
   Serial.print("Time mS: "); Serial.println(endTime-startTime);
   pathRecorder.printPath();
@@ -192,6 +191,7 @@ void replayRecordedPath(int forwardSpeed, int cornerApproachSpeed, int cornerSpe
     }
 
     // Push through PID controller
+#ifdef DETECT_CROSSOVER_TWITCH    
 #if SENSOR_POLAIRTY_TRUE
     if(rsidesens < markerHighThreshold ||
        lsidesens < markerHighThreshold)
@@ -208,6 +208,9 @@ void replayRecordedPath(int forwardSpeed, int cornerApproachSpeed, int cornerSpe
       // Ignore crossover
       pidInput = 0;
     }
+#else
+    pidInput = sensdiff;
+#endif    
 
     float turn = steeringPID.compute();
 
@@ -332,7 +335,8 @@ void replayRecordedPath(int forwardSpeed, int cornerApproachSpeed, int cornerSpe
 void lineFollower(int basespeed)
 {
     // Initial run
-    followAndRecordPath(basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
+    PathRecorder pathRecorder;
+    followAndRecordPath(pathRecorder, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
   
     while(1)
     {
@@ -344,6 +348,6 @@ void lineFollower(int basespeed)
       if(fastRunSpeed <= basespeed)
         fastRunSpeed = basespeed + 17;
       //delay(2000);
-      replayRecordedPath(fastRunSpeed, basespeed - 16, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
+      replayRecordedPath(pathRecorder, fastRunSpeed, basespeed - 16, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
     }
 }
