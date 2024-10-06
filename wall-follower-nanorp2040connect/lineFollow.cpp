@@ -217,7 +217,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
     // Set the motors to the default speed +/- turn
     if(PathRecorder::isDirectionForward(currentDirection))
     {
-      long decelCoastDistance = (forwardSpeed - cornerApproachSpeed) * CORNER_DECL_COAST_FACTOR;
+      long decelCoastDistance = (forwardSpeed - cornerApproachSpeed) * CORNER_DECL_COAST_FACTOR + CORNER_DECL_COAST_DISTANCE;
       long decelDistance = (forwardSpeed - cornerApproachSpeed) * DECELERATION_FACTOR;
       long distanceToGo = pathRecorder.getSegmentDistance() - playbackRecorder.getCurrentSegmentDistance() - decelCoastDistance;
       if(PathRecorder::isDirectionForward(nextDirection))
@@ -266,7 +266,10 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
       else if(currentDirection == PathRecorder::leftTurn)
         turn += FEED_FORWARD;
     }
-    
+
+    // Adjust the turn PID output based on new speed
+    turn = turn * (1 + (currentSpeed - 64) * PID_TURN_FACTOR);
+
     rightspeed = int(currentSpeed * (1 + turn));
     leftspeed = int(currentSpeed * (1 - turn));
  
@@ -348,6 +351,6 @@ void lineFollower(int basespeed)
       if(fastRunSpeed <= basespeed)
         fastRunSpeed = basespeed + 17;
       //delay(2000);
-      replayRecordedPath(pathRecorder, fastRunSpeed, basespeed - 16, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
+      replayRecordedPath(pathRecorder, fastRunSpeed, basespeed - CORNER_APPROACH_SLOWDOWN, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
     }
 }
