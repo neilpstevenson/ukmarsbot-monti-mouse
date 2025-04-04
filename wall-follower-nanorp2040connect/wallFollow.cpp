@@ -85,9 +85,9 @@ void forward(int distance, int speed)
           sensorForward() < wall_follow_forward_min_distance)
     {
       delay(loop_speed_ms);
-      //Serial.print("FORWARD ");
-      //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
-      //Serial.println();
+      //DebugPort.print("FORWARD ");
+      //DebugPort.print(encoder_r.count() * encode_calibrate_l);  DebugPort.print("mm ");
+      //DebugPort.println();
       photoread(true);
       logSensors("FORWARD");
     }
@@ -98,9 +98,9 @@ void forward(int distance, int speed)
     while(encoder_r.count() * encode_calibrate_r - start_pos_r > distance)
     {
       delay(loop_speed_ms);
-      //Serial.print("FORWARD ");
-      //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
-      //Serial.println();
+      //DebugPort.print("FORWARD ");
+      //DebugPort.print(encoder_r.count() * encode_calibrate_l);  DebugPort.print("mm ");
+      //DebugPort.println();
       photoread(true);
       logSensors("REVERSE");
     }
@@ -169,10 +169,10 @@ void turn_left_90(int speed)
         required_dist_r + (encoder_l.count() * encode_calibrate_l - start_pos_l))
   {
     delay(loop_speed_ms);
-    //Serial.print("LEFT ");
-    //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
-    //Serial.print(encoder_l.count() * encode_calibrate_r);  Serial.print("mm ");
-    //Serial.println();
+    //DebugPort.print("LEFT ");
+    //DebugPort.print(encoder_r.count() * encode_calibrate_l);  DebugPort.print("mm ");
+    //DebugPort.print(encoder_l.count() * encode_calibrate_r);  DebugPort.print("mm ");
+    //DebugPort.println();
     photoread(true);
     logSensors("LEFT90");
   }
@@ -196,10 +196,10 @@ void turn_right_90(int speed)
         required_dist_l + (encoder_r.count() * encode_calibrate_r - start_pos_r))
   {
     delay(loop_speed_ms);
-    //Serial.print("RIGHT ");
-    //Serial.print(encoder_r.count() * encode_calibrate_l);  Serial.print("mm ");
-    //Serial.print(encoder_l.count() * encode_calibrate_r);  Serial.print("mm ");
-    //Serial.println();
+    //DebugPort.print("RIGHT ");
+    //DebugPort.print(encoder_r.count() * encode_calibrate_l);  DebugPort.print("mm ");
+    //DebugPort.print(encoder_l.count() * encode_calibrate_r);  DebugPort.print("mm ");
+    //DebugPort.println();
     photoread(true);
     logSensors("RIGHT90");
   }
@@ -435,7 +435,7 @@ bool FollowLeftWall()
     // Reset PID
     reset_PID();
 
-    Serial.print("FollowLeftWall: speed="); Serial.println(mode_profiles[mode].left_leadin_speed);
+    DebugPort.print("FollowLeftWall: speed="); DebugPort.println(mode_profiles[mode].left_leadin_speed);
 
     while(true) 
     {
@@ -480,7 +480,7 @@ bool FollowLeftWall()
         // Blocked ahead - need to turn right or u-turn?
         if(sensorForward() > wall_follow_ahead_blocked_threshold)
         {
-          //Serial.println(" BLOCKED AHEAD");
+          //DebugPort.println(" BLOCKED AHEAD");
           // Do we need to do 90 degree or 180 degree?
           if(sensorRight() < wall_follow_right_gap_threshold)
           {
@@ -553,7 +553,7 @@ void simpleWallFollower(int basespeed)
   int sensdiff = 0;
   int leftTurnCount = 0;
 
-  Serial.print("Wall Follower, speed: "); Serial.println(basespeed);
+  DebugPort.print("Wall Follower, speed: "); DebugPort.println(basespeed);
   
   // Set up steering PID
   float pidInput = 0.0;
@@ -587,8 +587,8 @@ void simpleWallFollower(int basespeed)
     static float sensdiffFitered;
     sensdiffFitered = sensdiffFitered * 0.5 + sensdiff * 0.5;
 
-    //Serial.println(lfrontsens);
-    //Serial.println(sensdiff);
+    //DebugPort.println(lfrontsens);
+    //DebugPort.println(sensdiff);
 
     // Push through PID controller
     pidInput = sensdiffFitered;

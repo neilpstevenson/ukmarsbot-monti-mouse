@@ -1,6 +1,8 @@
 #pragma once
 
 #define SENSOR_POLAIRTY_TRUE 0 // 1 = If WHITE is a higher value (i.e. Neil's compact sensor), otherwise 0 (the UKMARSBOT sensors)
+#define SERIAL_DEBUG_PORT 
+//#define LOG_RAW_SENSORS
 
 const int MIN_BASE_SPEED = 40; //100;
 //const int MAX_BASE_SPEED = 170;
@@ -51,3 +53,9 @@ extern int rfrontsens;
 extern int sensdiff;
 
 extern int fnswvalue;
+
+#ifdef SERIAL_DEBUG_PORT
+static UART &DebugPort = Serial1; // i.e. UART0 (pins 0&1)
+#else
+static UART &DebugPort = Serial;  // i.e. USB serial
+#endif

@@ -39,7 +39,10 @@ Quadrature_encoder<m2encoder2, m2encoder1> encoder_r;
 void setup() 
 {
   Serial.begin(115200);
-  Serial1.begin(115200);  Serial1.println("Hello world!");
+  Serial1.begin(115200);  
+  
+  Serial.println("Monty Pi\nLine Follower and Wall Follower");
+  Serial1.println("Monty Pi\nLine Follower and Wall Follower");
 
   pinMode(lmotorDIR, OUTPUT);
   pinMode(rmotorDIR, OUTPUT);
@@ -102,7 +105,7 @@ void buttonwait(int period)
   digitalWrite(indicatorLedBlue, HIGH); // put LED on
 
   // Time for finger to be removed...
-  delay(500);
+  delay(250);
 }
 
 void functionswitch()
@@ -228,14 +231,14 @@ void photoread(bool polarity)
 
 //#define DEBUG_SENS
 #ifdef DEBUG_SENS
-  Serial.print("SENS,");
-  Serial.print(lsidesens);
-  Serial.print(",");
-  Serial.print(lfrontsens);
-  Serial.print(",");
-  Serial.print(rfrontsens);
-  Serial.print(",");
-  Serial.println(rsidesens);
+  DebugPort.print("SENS,");
+  DebugPort.print(lsidesens);
+  DebugPort.print(",");
+  DebugPort.print(lfrontsens);
+  DebugPort.print(",");
+  DebugPort.print(rfrontsens);
+  DebugPort.print(",");
+  DebugPort.println(rsidesens);
 #endif
 }
 
@@ -308,45 +311,66 @@ void sensorTest()
       digitalWrite (indicatorLedBlue, LOW);
     }
 
-    Serial.print(a0val);
-    Serial.print(",");
-    Serial.print(a0valu);
-    Serial.print(",");
-    Serial.print(lsidesens);    
-    Serial.print(", ");
-    Serial.print(a1val);
-    Serial.print(",");
-    Serial.print(a1valu);
-    Serial.print(",");
-    Serial.print(lfrontsens);    
-    Serial.print(", ");
-    Serial.print(a2val);
-    Serial.print(",");
-    Serial.print(a2valu);
-    Serial.print(",");
-    Serial.print(rfrontsens);    
-    Serial.print(", ");
-    Serial.print(a3val);
-    Serial.print(",");
-    Serial.print(a3valu);
-    Serial.print(",");
-    Serial.print(rsidesens);    
-    Serial.print(", ");
-    Serial.print(rfrontsens - lfrontsens);
-    Serial.print(",");
-    Serial.println(fnswvalue);
+    DebugPort.print(a0val);
+    DebugPort.print(",");
+    DebugPort.print(a0valu);
+    DebugPort.print(",");
+    DebugPort.print(lsidesens);    
+    DebugPort.print(", ");
+    DebugPort.print(a1val);
+    DebugPort.print(",");
+    DebugPort.print(a1valu);
+    DebugPort.print(",");
+    DebugPort.print(lfrontsens);    
+    DebugPort.print(", ");
+    DebugPort.print(a2val);
+    DebugPort.print(",");
+    DebugPort.print(a2valu);
+    DebugPort.print(",");
+    DebugPort.print(rfrontsens);    
+    DebugPort.print(", ");
+    DebugPort.print(a3val);
+    DebugPort.print(",");
+    DebugPort.print(a3valu);
+    DebugPort.print(",");
+    DebugPort.print(rsidesens);    
+    DebugPort.print(", ");
+    DebugPort.print(rfrontsens - lfrontsens);
+    DebugPort.print(",");
+    DebugPort.println(fnswvalue);
 
     delay(20); 
   }
 }
 
+void showMode(int mode)
+{
+  digitalWrite(LEDR, (mode & 1) ? LOW : HIGH);
+  //digitalWrite(LEDG, mode == 1 ? HIGH : LOW); // doesn't seem to work
+  digitalWrite(LEDB, mode >= 1 ? HIGH : LOW);
+}
+
 void loop() 
 {
-  bool altMode = buttonPressed();
-  Serial.print("Mode: "); Serial.println(altMode);
+  int mode = buttonPressed() ? 1 : 0;
+  showMode(mode);
+  // If pressed for a bit longer, set into mode 2
+  if(mode)
+  {
+    delay(1000);
+    if(buttonPressed())
+      mode++;
+    showMode(mode);
+  }
+
+  DebugPort.print("Mode: "); DebugPort.println(mode == 0 ? "Line" : mode == 1 ? "Pursuit" : "Wall");
+
+  // Show mode on sensor LEDs
+//  digitalWrite (sensorLED1, altMode & 1 );  // Right/Red LED
+//  digitalWrite (sensorLED2, altMode & 2 );  // Left/Green LED
 
   // Wait for button press and battery voltage ok
-  buttonwait(altMode ? 25 : 50); // wait for function button to be pressed
+  buttonwait((mode + 1) * 25); // wait for function button to be pressed
   while(!batterycheck())
   {
     buttonwait(10); // wait for function button to be pressed
@@ -360,59 +384,60 @@ void loop()
     basespeed = MIN_BASE_SPEED;
 
   int batteryread = analogRead(battery); // read battery voltage
-  Serial.print("Battery level ");
-  Serial.println(batteryread);
+  DebugPort.print("Battery level ");
+  DebugPort.println(batteryread);
   //batterycheck();
-  Serial.print("Running at ");
-  Serial.println(basespeed);
+  DebugPort.print("Running at ");
+  DebugPort.println(basespeed);
 
   // Unit test sensors
   #ifdef UNIT_TEST
   delay(30);
-  Serial.print("delay\nhigh->");
-  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
-  Serial.print("low->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("delay\nhigh->");
+  DebugPort.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  DebugPort.print("low->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
   delay(30);
-  Serial.print("delay\nhigh->");
-  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
-  Serial.print("low->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
-  Serial.print("high->");
-  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
-  Serial.print("low->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("delay\nhigh->");
+  DebugPort.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  DebugPort.print("low->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("high->");
+  DebugPort.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  DebugPort.print("low->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
   delay(30);
-  Serial.print("delay\nlow->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
-  Serial.print("high->");
-  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
-  Serial.print("low->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
-  Serial.print("high->");
-  Serial.println(radiusMarker.isTriggered(markerHighThreshold + 1));
-  Serial.print("low->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("delay\nlow->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("high->");
+  DebugPort.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  DebugPort.print("low->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("high->");
+  DebugPort.println(radiusMarker.isTriggered(markerHighThreshold + 1));
+  DebugPort.print("low->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
   delay(30);
-  Serial.print("delay\nlow->");
-  Serial.println(radiusMarker.isTriggered(markerLowThreshold - 1));
+  DebugPort.print("delay\nlow->");
+  DebugPort.println(radiusMarker.isTriggered(markerLowThreshold - 1));
   delay(30);
 #endif
 
   if (fnswvalue > 1) 
   {
-    if(altMode)
+    switch(mode)
     {
-      //FollowLeftWall();
-      simpleWallFollower(basespeed);
-      return; 
-    }
-    else
-    {
-      lineFollower(basespeed);
+      case 0:
+        lineFollower(basespeed, false);
+        break; 
+      case 1:
+        lineFollower(basespeed, true);
+        break; 
+      case 2:
+        simpleWallFollower(basespeed);
+        break; 
     }
   }
-// if (fnswvalue == 1) 
   else if (fnswvalue == 1)
     calibrateSensors(); 
   else

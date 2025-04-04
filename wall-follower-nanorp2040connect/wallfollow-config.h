@@ -1,8 +1,5 @@
 #pragma once
 
-//#define SERIAL_DEBUG_PORT 
-//#define LOG_RAW_SENSORS
-
 static const float kp = 0.10;
 static const float kd = 0.015;
 
@@ -59,10 +56,4 @@ const int wallFollowerLeftTurnDelay = 40;   // Loops before we turn, to prevent 
 
 // General
 static const int loop_speed_ms = 2; // Plus ADC conversion times
-
-#ifdef SERIAL_DEBUG_PORT
-static UART &DebugPort = Serial1; // i.e. UART0 (pins 0&1)
-#else
-static UART &DebugPort = Serial;  // i.e. USB serial
-#endif
 

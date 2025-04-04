@@ -31,6 +31,8 @@ public:
 
 private:
 
+  bool pursuitMode;
+  
   static const int MAX_SEGEMENTS = 100;
   Segment segments[MAX_SEGEMENTS];
   int totalSegments;
@@ -53,7 +55,7 @@ public:
   PathRecorder();
 
   // Recorder
-  void reset();
+  void reset(bool pursuitMode);
   void record(int radiusMarkerReading, int startStopMarkerReading, int positionLeft, int positionRight);
   bool detectedEndMarker() const;
 
@@ -67,6 +69,8 @@ public:
   bool isSegmentEndMarker();
   int currentSegmentNumber() { return currentSegment; }
   static bool isDirectionForward(SegmentDirection direction);
+
+  int countCrossovers() const;
 
   // Debug
   void printPath();

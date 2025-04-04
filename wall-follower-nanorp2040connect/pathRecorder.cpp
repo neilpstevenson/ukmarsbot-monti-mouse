@@ -3,6 +3,7 @@
 #include "defaults.h"
 
 PathRecorder::PathRecorder() :
+    pursuitMode(false),
     totalSegments(0),
     currentSegment(0),
     lastPositionLeft(0),
@@ -20,12 +21,13 @@ PathRecorder::PathRecorder() :
 
 }
 
-void PathRecorder::reset()
+void PathRecorder::reset(bool pursuitMode)
 {
   totalSegments = 0;
   currentSegment = 0;
   lastPositionLeft = 0;
   lastPositionRight = 0;
+  this->pursuitMode = pursuitMode;
 }
 
 void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, int positionLeft, int positionRight)
@@ -39,61 +41,152 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
     // Adjust after we've got a bit into the segment (straight or bend)
     lastSegmentDeferredPositionLeft = positionLeft;
     lastSegmentDeferredPositionRight = positionRight;
-    //Serial.print("Distance adjusted at ");
-    //Serial.println(getCurrentSegmentDistance());
+    //DebugPort.print("Distance adjusted at ");
+    //DebugPort.println(getCurrentSegmentDistance());
   }
 
   if(startFinish.isTriggered(startStopMarkerReading))
   {
-      // Could this be a cross-over?
-      if(totalSegments > 1 && 
-          segments[totalSegments-1].direction > endMark &&
-          segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+      if(pursuitMode)
       {
-        // Convert last mark to a cross-over mark
-        segments[totalSegments-1].direction = crossOver;
+        if(totalSegments > 1 && 
+            segments[totalSegments-1].direction > endMark &&
+            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+        {
+          // Radius mark seen, but now realise it is actually a cross-over
+          //
+          // Convert last mark to a cross-over mark
+          segments[totalSegments-1].direction = crossOver;
+        }
+        else
+        {
+          // Update last segment
+          adjustSegmentDistances();
+
+          // Basically treat as cross-over, as we're not doing anything on start/stop markers
+          if(totalSegments)
+          {
+            addSegment(crossOver);
+            DebugPort.print("CROSS Pursuit at ");
+          }
+          else
+          {
+            addSegment(crossOver);
+            DebugPort.print("CROSS Start Pursuit at ");
+          }
+          DebugPort.print(positionLeft);
+          DebugPort.print(",");
+          DebugPort.println(positionRight);
+        }
       }
       else
       {
-        // Update last segment
-        adjustSegmentDistances();
-  
-        // Add new segment to list
-        addSegment(totalSegments ? endMark : startMark);
- 
-        Serial.print("Start/stop at ");
-        Serial.print(positionLeft);
-        Serial.print(",");
-        Serial.println(positionRight);
+        if(totalSegments > 1 && 
+            segments[totalSegments-1].direction > endMark &&
+            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+        {
+          // Radius mark seen, but now realise it is actually a cross-over
+          //
+          // Convert last mark to a cross-over mark
+          segments[totalSegments-1].direction = crossOver;
+        }
+        else
+        {
+          // Update last segment
+          adjustSegmentDistances();
+    
+          // Add new segment to list
+          if(totalSegments)
+          {
+            addSegment(endMark);
+            DebugPort.print("END at ");
+          }
+          else
+          {
+            addSegment(startMark);
+            DebugPort.print("START at ");
+          }
+          DebugPort.print(positionLeft);
+          DebugPort.print(",");
+          DebugPort.println(positionRight);
+        }
       }
   }
 
   // Radius marker check
   if(radiusMarker.isTriggered(radiusMarkerReading))
   {
-      // Could this be a cross-over?
-      if(totalSegments > 1 && 
-          segments[totalSegments-1].direction <= endMark &&
-          segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+      if(pursuitMode)
       {
-        // Convert last mark to a cross-over mark
-        segments[totalSegments-1].direction = crossOver;
+        // Could this be a cross-over?
+        if(totalSegments > 1 && 
+            (segments[totalSegments-1].direction <= endMark || segments[totalSegments-1].direction == crossOver) &&
+            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+        {
+          // Convert last mark to a cross-over mark
+          segments[totalSegments-1].direction = crossOver;
+          adjustSegmentDistances();
+        }
+        else
+        if(totalSegments == 1 && 
+            (segments[totalSegments-1].direction <= endMark || segments[totalSegments-1].direction == crossOver) &&
+            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+        {
+          // Ignore initial crossover
+          adjustSegmentDistances();
+        }
+        else
+        {
+          // Update last segment
+          adjustSegmentDistances();
+
+          // Add to list
+          addSegment(rightTurn);    // Initial guess
+
+          DebugPort.print("Radius at ");
+          DebugPort.print(positionLeft);
+          DebugPort.print(",");
+          DebugPort.println(positionRight);
+        }
       }
       else
       {
-        // Update last segment
-        adjustSegmentDistances();
+        // Could this be a cross-over?
+        if(totalSegments > 1 && 
+            segments[totalSegments-1].direction <= endMark &&
+            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+        {
+          // Convert last mark to a cross-over mark
+          segments[totalSegments-1].direction = crossOver;
+        }
+        else
+        {
+          // Update last segment
+          adjustSegmentDistances();
 
-        // Add to list
-        addSegment(rightTurn);    // Initial guess
+          // Add to list
+          addSegment(rightTurn);    // Initial guess
 
-        Serial.print("Radius at ");
-        Serial.print(positionLeft);
-        Serial.print(",");
-        Serial.println(positionRight);
+          DebugPort.print("Radius at ");
+          DebugPort.print(positionLeft);
+          DebugPort.print(",");
+          DebugPort.println(positionRight);
+        }
       }
   }
 }
+
+int PathRecorder::countCrossovers() const
+{
+  int count = 0;
+  for(int segment = 0; segment <= currentSegment; segment++ )
+  {
+    if(segments[segment].direction == crossOver)
+      count++;
+  }
+  return count;
+}
+
 
 void PathRecorder::addSegment(SegmentDirection direction)
 {
@@ -129,12 +222,12 @@ void PathRecorder::adjustSegmentDistances()
       else
         segments[totalSegments-1].direction = (distanceLeft > distanceRight) ? rightTurn : leftTurn;
     }
-    Serial.print("Adjusted dist ");
+    DebugPort.print("Adjusted dist ");
     printDirection(segments[totalSegments-1].direction);
-    Serial.print(",");
-    Serial.print(getCurrentSegmentDistance());
-    Serial.print("->");
-    Serial.println(getSegmentDistance());
+    DebugPort.print(",");
+    DebugPort.print(getCurrentSegmentDistance());
+    DebugPort.print("->");
+    DebugPort.println(getSegmentDistance());
   }
 }
 
@@ -202,18 +295,18 @@ bool PathRecorder::isSegmentEndMarker()
 
 void PathRecorder::printPath()
 {
-  Serial.print("Path Recorded ");
-  Serial.print(totalSegments);
-  Serial.println(" segments");
+  DebugPort.print("Path Recorded ");
+  DebugPort.print(totalSegments);
+  DebugPort.println(" segments");
   for(int i = 0; i < totalSegments; i++)   
   {
-    Serial.print(i);                         Serial.print(",");
-    printDirection(segments[i].direction);   Serial.print(",");
-    Serial.print(segments[i].positionLeft);  Serial.print(",");
-    Serial.print(segments[i].positionRight); Serial.print(",");
-    Serial.print(segments[i].distanceLeft);  Serial.print(",");
-    Serial.print(segments[i].distanceRight);
-    Serial.println();
+    DebugPort.print(i);                         DebugPort.print(",");
+    printDirection(segments[i].direction);   DebugPort.print(",");
+    DebugPort.print(segments[i].positionLeft);  DebugPort.print(",");
+    DebugPort.print(segments[i].positionRight); DebugPort.print(",");
+    DebugPort.print(segments[i].distanceLeft);  DebugPort.print(",");
+    DebugPort.print(segments[i].distanceRight);
+    DebugPort.println();
   }
 }
 
@@ -230,31 +323,38 @@ void PathRecorder::printDirection(PathRecorder::SegmentDirection direction)
   switch(direction)
   {
     case startMark:
-      Serial.print("Start");   break;
+      DebugPort.print("Start");   break;
     case endMark:
-      Serial.print("End");   break;
+      DebugPort.print("End");   break;
     case forward:
-      Serial.print("Fwd");   break;
+      DebugPort.print("Fwd");   break;
     case rightTurn:
-      Serial.print("Right");   break;
+      DebugPort.print("Right");   break;
     case rightTurn180:
-      Serial.print("R180");   break;
+      DebugPort.print("R180");   break;
     case rightTurn270:
-      Serial.print("R270");   break;
+      DebugPort.print("R270");   break;
     case leftTurn:
-      Serial.print("Left");   break;
+      DebugPort.print("Left");   break;
     case leftTurn180:
-      Serial.print("L180");   break;
+      DebugPort.print("L180");   break;
     case leftTurn270:
-      Serial.print("L270");   break;
+      DebugPort.print("L270");   break;
     case crossOver:
-      Serial.print("Cross");   break;
+      DebugPort.print("Cross");   break;
   }
 }
 
 bool PathRecorder::detectedEndMarker() const
 {
-  return totalSegments > 1 && 
-          segments[totalSegments-1].direction == endMark &&
-          segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE < lastPositionLeft;
+  if(pursuitMode)
+  {
+    return countCrossovers() >= 4;
+  }
+  else
+  {
+    return totalSegments > 1 && 
+            segments[totalSegments-1].direction == endMark &&
+            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE < lastPositionLeft;
+  }
 }

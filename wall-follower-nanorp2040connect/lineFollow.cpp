@@ -9,12 +9,37 @@ unsigned long int endTime = 0;
 unsigned long int startTime = 0;
 int markerLowThreshold = defaultMarkerLowThreshold;
 
+// Log sensor state and current speeds
+void logFollowerState(int segment, float turn)
+{
+  static bool logHeading = true;
+  static const int logFreq = 0; //5;  // Number of loops between logs
+  static int count = 0;
+  if(logHeading)
+  { 
+    logHeading = false;
+    DebugPort.println("seg,lf,rf,turn,lsp,rsp");
+  }
+
+  if(++count == logFreq)
+  {
+    count = 0;
+    DebugPort.print(segment);           DebugPort.print(","); 
+    DebugPort.print(lfrontsens);        DebugPort.print(","); 
+    DebugPort.print(rfrontsens);        DebugPort.print(","); 
+    DebugPort.print(turn);              DebugPort.print(","); 
+    DebugPort.print(encoder_l.speed()); DebugPort.print(","); 
+    DebugPort.print(encoder_r.speed()); DebugPort.print(","); 
+    DebugPort.println();
+  }
+}
+
 // Initial line follower function, recording what it sees along the way
 //
-void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdownSpeed) 
+void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdownSpeed, bool pursuitMode) 
 {
-  Serial.print("Base speed: "); Serial.println(basespeed);
-  Serial.print("Slowdown speed: "); Serial.println(slowdownSpeed);
+  DebugPort.print("Base speed: "); DebugPort.println(basespeed);
+  DebugPort.print("Slowdown speed: "); DebugPort.println(slowdownSpeed);
   
   // Set up steering PID
   float pidInput = 0.0;
@@ -24,7 +49,7 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
   // Reset everthing
   encoder_l.reset_count();
   encoder_r.reset_count();
-  pathRecorder.reset();
+  pathRecorder.reset(pursuitMode);
 
   // Set up motor direction
   digitalWrite(rmotorDIR, HIGH); // set right motor forward
@@ -52,6 +77,9 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
     pidInput = sensdiff;
     float turn = steeringPID.compute();
 
+    // Adjust the turn PID output based on new speed
+    turn = constrain(turn * (1 + (basespeed - 64) * PID_TURN_FACTOR), -MAX_MOTOR_VOLTS, MAX_MOTOR_VOLTS);
+
     // Detect and record any markers found 
     pathRecorder.record(lsidesens, rsidesens, (int)(-encoder_l.count() * ENCODER_CALIBRATION), (int)(encoder_r.count() * ENCODER_CALIBRATION));
 
@@ -65,81 +93,101 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, pathRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
   
+    logFollowerState(pathRecorder.currentSegmentNumber(), turn);
+
     count++;
     delay(3);
   }
 
   endTime = millis();
 
-  // Slowdown sequence
-  int stopMarkerPos_r = encoder_r.count();
-  while(stopMarkerPos_r + STOP_DISTANCE > encoder_r.count())
+  if(!pursuitMode)
   {
-    photoread();
-
-#if SENSOR_POLAIRTY_TRUE
-    sensdiff = rfrontsens - lfrontsens;
-#else
-    sensdiff = lfrontsens - rfrontsens;
-#endif
-
-    // Push through PID controller
-#ifdef DETECT_CROSSOVER_TWITCH    
-#if SENSOR_POLAIRTY_TRUE
-    if(rsidesens < markerHighThreshold ||
-       lsidesens < markerHighThreshold)
-#else
-    if(rsidesens > markerLowThreshold || 
-       lsidesens > markerLowThreshold)
-#endif
+    // Slowdown sequence
+    int stopMarkerPos_r = encoder_r.count();
+    while(stopMarkerPos_r + STOP_DISTANCE > encoder_r.count())
     {
-      // Not at crossover
+      photoread();
+
+  #if SENSOR_POLAIRTY_TRUE
+      sensdiff = rfrontsens - lfrontsens;
+  #else
+      sensdiff = lfrontsens - rfrontsens;
+  #endif
+
+      // Push through PID controller
+  #ifdef DETECT_CROSSOVER_TWITCH    
+  #if SENSOR_POLAIRTY_TRUE
+      if(rsidesens < markerHighThreshold ||
+        lsidesens < markerHighThreshold)
+  #else
+      if(rsidesens > markerLowThreshold || 
+        lsidesens > markerLowThreshold)
+  #endif
+      {
+        // Not at crossover
+        pidInput = sensdiff;
+      }
+      else
+      {
+        // Ignore crossover
+        pidInput = 0;
+      }
+  #else
       pidInput = sensdiff;
-    }
-    else
-    {
-      // Ignore crossover
-      pidInput = 0;
-    }
-#else
-    pidInput = sensdiff;
-#endif    
-    float turn = steeringPID.compute();
+  #endif    
+      float turn = steeringPID.compute();
 
-    // Set the motors to the default speed +/- turn
-    rightspeed = int(slowdownSpeed * (1 + turn));
-    leftspeed = int(slowdownSpeed * (1 - turn));
-    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+    // Adjust the turn PID output based on new speed
+      turn = constrain(turn * (1 + (slowdownSpeed - 64) * PID_TURN_FACTOR), -MAX_MOTOR_VOLTS, MAX_MOTOR_VOLTS);
+
+      // Set the motors to the default speed +/- turn
+      rightspeed = int(slowdownSpeed * (1 + turn));
+      leftspeed = int(slowdownSpeed * (1 - turn));
+      analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+      analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+
+      logFollowerState(pathRecorder.currentSegmentNumber(), turn);
+      
+      delay(3);
+    }
     
-    delay(3);
+    digitalWrite(indicatorLedBlue, LOW); // LED off
+    
+    stopmotors();
   }
-  
-  digitalWrite(indicatorLedBlue, LOW); // LED off
-  
-  stopmotors();
+  else
+  {
+    // Persuit mode
+    DebugPort.print("Pursuit mode ended");
+    digitalWrite(indicatorLedBlue, LOW); // LED off
+  }
 
   // Print results
-  Serial.print("Time mS: "); Serial.println(endTime-startTime);
-  Serial.print("Loop: "); Serial.print(count);
-  Serial.print(" ("); Serial.print(count/((endTime-startTime)/1000.0)); Serial.println("/sec)"); 
+  DebugPort.print("Time mS: "); DebugPort.println(endTime-startTime);
+  DebugPort.print("Loop: "); DebugPort.print(count);
+  DebugPort.print(" ("); DebugPort.print(count/((endTime-startTime)/1000.0)); DebugPort.println("/sec)"); 
   pathRecorder.printPath();
 }
 
 // Line follow, using path knowledge previously recorded
 //
-void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int cornerApproachSpeed, int cornerSpeed, int slowdownSpeed)
+void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int cornerApproachSpeed, int cornerSpeed, int slowdownSpeed, bool pursuitMode)
 {
-  Serial.print("Time mS: "); Serial.println(endTime-startTime);
-  pathRecorder.printPath();
-  delay(1000);
+  DebugPort.print("Time mS: "); DebugPort.println(endTime-startTime);
+  if(!pursuitMode)
+  {
+    pathRecorder.printPath();
+    delay(1000);
+  }
 
-  Serial.print("Base speed: "); Serial.println(forwardSpeed);
-  Serial.print("Corner speed: "); Serial.println(cornerSpeed);
-  Serial.print("Slowdown speed: "); Serial.println(slowdownSpeed);
+  DebugPort.print("Base speed: "); DebugPort.println(forwardSpeed);
+  DebugPort.print("Corner speed: "); DebugPort.println(cornerSpeed);
+  DebugPort.print("Slowdown speed: "); DebugPort.println(slowdownSpeed);
 
   // Temporary record while playing back
   PathRecorder playbackRecorder;
+  playbackRecorder.reset(pursuitMode);
 
   // Set up steering PID
   float pidInput = 0.0;
@@ -230,7 +278,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
         int speed = (forwardSpeed - cornerApproachSpeed) * distanceToGo / decelDistance + cornerApproachSpeed;
         // Don't go faster if already slower
         currentSpeed = std::min(speed, currentSpeed);
-        Serial.print("Decel,");
+        //DebugPort.print("Decel,");
       }
       else if(distanceToGo > decelDistance)
       {
@@ -240,25 +288,25 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
           int speed = (forwardSpeed - cornerSpeed) * playbackRecorder.getCurrentSegmentDistance() / ACCELERATION_DISTANCE + cornerSpeed;
           // Keep going if already up to speed
           currentSpeed = std::max(speed, currentSpeed);
-          Serial.print("Accel,");
+          //DebugPort.print("Accel,");
         }
         else
         {
           // Want max speed
           currentSpeed = forwardSpeed;
-          Serial.print("Fast,");
+          //DebugPort.print("Fast,");
         }
       }
       else
       {
         currentSpeed = cornerSpeed;
-        Serial.print("D_done,");
+        //DebugPort.print("D_done,");
       }
     }
     else
     {
       currentSpeed = cornerSpeed;
-      Serial.print("Corner,");
+      //DebugPort.print("Corner,");
 
       // Add a bit of feed-forward
       if(currentDirection == PathRecorder::rightTurn)
@@ -268,7 +316,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
     }
 
     // Adjust the turn PID output based on new speed
-    turn = turn * (1 + (currentSpeed - 64) * PID_TURN_FACTOR);
+    turn = constrain(turn * (1 + (currentSpeed - 64) * PID_TURN_FACTOR), -MAX_MOTOR_VOLTS, MAX_MOTOR_VOLTS);
 
     rightspeed = int(currentSpeed * (1 + turn));
     leftspeed = int(currentSpeed * (1 - turn));
@@ -279,15 +327,19 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, playbackRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
 
+    logFollowerState(playbackRecorder.currentSegmentNumber(), turn);
+    
+/*
     // Debug
-    Serial.print(playbackRecorder.currentSegmentNumber());
-    Serial.print(",");        PathRecorder::printDirection(currentDirection);
-    Serial.print(",seg_d=");  Serial.print(pathRecorder.getSegmentDistance());
-    Serial.print(",cur_d=");  Serial.print(playbackRecorder.getCurrentSegmentDistance());
-    Serial.print(",s=");      Serial.print(currentSpeed);
-    Serial.print(",turn=");   Serial.print(turn);
-    Serial.print(",pos=");    Serial.print(leftPosition);
-    Serial.print(",");        Serial.println(leftPosition);
+    DebugPort.print(playbackRecorder.currentSegmentNumber());
+    DebugPort.print(",");        PathRecorder::printDirection(currentDirection);
+    DebugPort.print(",seg_d=");  DebugPort.print(pathRecorder.getSegmentDistance());
+    DebugPort.print(",cur_d=");  DebugPort.print(playbackRecorder.getCurrentSegmentDistance());
+    DebugPort.print(",s=");      DebugPort.print(currentSpeed);
+    DebugPort.print(",turn=");   DebugPort.print(turn);
+    DebugPort.print(",pos=");    DebugPort.print(leftPosition);
+    DebugPort.print(",");        DebugPort.println(leftPosition);
+*/
 
     count++;
     delay(3);
@@ -295,62 +347,80 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
   
   endTime = millis();
 
-  Serial.print("Slowdown ");
-  Serial.println(slowdownSpeed);
-
-  // Slowdown sequence
-  int stopMarkerPos_r = encoder_r.count();
-  while(stopMarkerPos_r + STOP_DISTANCE > encoder_r.count())
+  if(!pursuitMode)
   {
-    photoread();
+    DebugPort.print("Slowdown ");
+    DebugPort.println(slowdownSpeed);
 
-#if SENSOR_POLAIRTY_TRUE
-    sensdiff = rfrontsens - lfrontsens;
-#else
-    sensdiff = lfrontsens - rfrontsens;
-#endif
+    // Slowdown sequence
+    int stopMarkerPos_r = encoder_r.count();
+    while(stopMarkerPos_r + STOP_DISTANCE > encoder_r.count())
+    {
+      photoread();
 
-    // Push through PID controller
-    pidInput = sensdiff;
-    float turn = steeringPID.compute();
+  #if SENSOR_POLAIRTY_TRUE
+      sensdiff = rfrontsens - lfrontsens;
+  #else
+      sensdiff = lfrontsens - rfrontsens;
+  #endif
 
-    // Set the motors to the default speed +/- turn
-    rightspeed = slowdownSpeed * (1 + turn);
-    leftspeed = slowdownSpeed * (1 - turn);
-    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
-    
-    delay(3);
-  }
- 
-  digitalWrite(indicatorLedBlue, LOW); // LED off
+      // Push through PID controller
+      pidInput = sensdiff;
+      float turn = steeringPID.compute();
+
+      // Adjust the turn PID output based on new speed
+      turn = constrain(turn * (1 + (slowdownSpeed - 64) * PID_TURN_FACTOR), -MAX_MOTOR_VOLTS, MAX_MOTOR_VOLTS);
+
+      // Set the motors to the default speed +/- turn
+      rightspeed = slowdownSpeed * (1 + turn);
+      leftspeed = slowdownSpeed * (1 - turn);
+      analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+      analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+      
+      logFollowerState(playbackRecorder.currentSegmentNumber(), turn);
+      
+      delay(3);
+    }
   
-  stopmotors();
+    digitalWrite(indicatorLedBlue, LOW); // LED off
+    
+    stopmotors();
+  }
+  else
+  {
+    // Persuit mode
+    DebugPort.print("Pursuit mode ended");
+    digitalWrite(indicatorLedBlue, LOW); // LED off
+  }
 
   // Print results
-  Serial.print("Time mS: "); Serial.println(endTime-startTime);
-  Serial.print("Loop: "); Serial.print(count);
-  Serial.print(" ("); Serial.print(count/((endTime-startTime)/1000.0)); Serial.println("/sec)"); 
+  DebugPort.print("Time mS: "); DebugPort.println(endTime-startTime);
+  DebugPort.print("Loop: "); DebugPort.print(count);
+  DebugPort.print(" ("); DebugPort.print(count/((endTime-startTime)/1000.0)); DebugPort.println("/sec)"); 
   pathRecorder.printPath();
 }
 
 
-void lineFollower(int basespeed)
+void lineFollower(int basespeed, bool pursuitMode)
 {
     // Initial run
     PathRecorder pathRecorder;
-    followAndRecordPath(pathRecorder, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
+    followAndRecordPath(pathRecorder, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO), pursuitMode);
   
     while(1)
     {
       // Now replay at higher speed
-      buttonwait(20); // wait for function button to be pressed
+      if(!pursuitMode)
+      {
+        buttonwait(20); // wait for function button to be pressed
+      }
       batterycheck();
       functionswitch(); // read function switch value after button released
       int fastRunSpeed = fnswvalue * 17;
       if(fastRunSpeed <= basespeed)
         fastRunSpeed = basespeed + 17;
       //delay(2000);
-      replayRecordedPath(pathRecorder, fastRunSpeed, basespeed - CORNER_APPROACH_SLOWDOWN, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO));
+
+      replayRecordedPath(pathRecorder, fastRunSpeed, basespeed - CORNER_APPROACH_SLOWDOWN, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO), pursuitMode);
     }
 }

@@ -52,10 +52,10 @@ void calibrateSensors()
       digitalWrite (sensorLED2, lsidesens > (cal.lsidesensMax+cal.lsidesensMin)/2);   // Left/Green LED
       digitalWrite (indicatorLedBlue, lfrontsens > (cal.lfrontsensMax+cal.lfrontsensMin)/2);  // Centre/Blue LED
 
-      Serial.print(cal.lsidesensMin); Serial.print("/"); Serial.print(cal.lsidesensMax); Serial.print(", "); 
-      Serial.print(cal.lfrontsensMin); Serial.print("/"); Serial.print(cal.lfrontsensMax); Serial.print(", "); 
-      Serial.print(cal.rfrontsensMin); Serial.print("/"); Serial.print(cal.rfrontsensMax); Serial.print(", "); 
-      Serial.print(cal.rfrontsensMin); Serial.print("/"); Serial.print(cal.rfrontsensMax); Serial.println(); 
+      DebugPort.print(cal.lsidesensMin); DebugPort.print("/"); DebugPort.print(cal.lsidesensMax); DebugPort.print(", "); 
+      DebugPort.print(cal.lfrontsensMin); DebugPort.print("/"); DebugPort.print(cal.lfrontsensMax); DebugPort.print(", "); 
+      DebugPort.print(cal.rfrontsensMin); DebugPort.print("/"); DebugPort.print(cal.rfrontsensMax); DebugPort.print(", "); 
+      DebugPort.print(cal.rfrontsensMin); DebugPort.print("/"); DebugPort.print(cal.rfrontsensMax); DebugPort.println(); 
       delay(2);      
     }
 

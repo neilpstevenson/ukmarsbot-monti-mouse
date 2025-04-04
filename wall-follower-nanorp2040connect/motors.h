@@ -28,7 +28,7 @@ class Motor
           power = 255;
         digitalWrite(pinDir, HIGH);
         analogWrite(pinPwm, power);
-        //Serial.print("M: ");Serial.print(pinDir);Serial.print(": H, ");Serial.print(pinPwm);Serial.print(": ");Serial.println(power);
+        //DebugPort.print("M: ");DebugPort.print(pinDir);DebugPort.print(": H, ");DebugPort.print(pinPwm);DebugPort.print(": ");DebugPort.println(power);
       }
       else
       {
@@ -36,14 +36,14 @@ class Motor
           power = -255;
         digitalWrite(pinDir, LOW);
         analogWrite(pinPwm, -power);
-        //Serial.print("M: ");Serial.print(pinDir);Serial.print(": L, ");Serial.print(pinPwm);Serial.print(": ");Serial.println(power);
+        //DebugPort.print("M: ");DebugPort.print(pinDir);DebugPort.print(": L, ");DebugPort.print(pinPwm);DebugPort.print(": ");DebugPort.println(power);
       }
     } 
 
     void stop(bool breakMode = false)
     {
       analogWrite(pinPwm, 0);
-      //Serial.print("M: ");Serial.print(pinPwm);Serial.print(": ");Serial.println(0);
+      //DebugPort.print("M: ");DebugPort.print(pinPwm);DebugPort.print(": ");DebugPort.println(0);
     }      
 };
 

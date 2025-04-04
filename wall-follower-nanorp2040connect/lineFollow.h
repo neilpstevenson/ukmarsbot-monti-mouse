@@ -13,12 +13,12 @@ const int STOP_DISTANCE = 80 - CROSSOVER_TOLERANCE;
 const float PID_TURN_FACTOR = 0.005;  // Amount to multiply the PID turn result by speed difference of 64 - approx doubling of values from 64 to 255
 
 // PID values
-const float PID_Kp = 0.025; //0.012; //0.03; //0.012; // 0.015;    // 0.03 old 1/2 size board
+const float PID_Kp = 0.0025; //0.025; //0.0025; //0.012; //0.03; //0.012; // 0.015;    // 0.03 old 1/2 size board
 const float PID_Ki = 0.0;
-const float PID_Kd = 0.002; //0.001; //0.002; // 0.001;  // 0.0025 old 1/2 size board
+const float PID_Kd = 0.0001; //0.002; //0.0001; //0.001; //0.002; // 0.001;  // 0.0025 old 1/2 size board
 const float FEED_FORWARD = 0.0; // speed increase fraction
 
-extern void lineFollower(int basespeed);
+extern void lineFollower(int basespeed, bool pursuitMode);
 
 // Encoders
 extern Quadrature_encoder<m1encoder2, m1encoder1> encoder_l;
