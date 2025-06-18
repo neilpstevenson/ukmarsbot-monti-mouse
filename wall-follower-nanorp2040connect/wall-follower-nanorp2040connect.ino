@@ -59,8 +59,8 @@ void setup()
   
   stopmotors(); // switch off the motors
 
-  encoder_l.begin(pull_direction::up, resolution::quarter);
-  encoder_r.begin(pull_direction::up, resolution::quarter);
+  encoder_l.begin(pull_direction::up, resolution::half);
+  encoder_r.begin(pull_direction::up, resolution::half);
 
 }
 

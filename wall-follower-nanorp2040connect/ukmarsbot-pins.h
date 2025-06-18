@@ -11,10 +11,10 @@ const int lside = A3; // left side sensor input (radius)
 #define battery A7 // input for battery measurement
 const int Receive = 0; //Receive pin
 const int Transmit = 1; //Transmit pin
-const int m1encoder1 = 25; // motor 1 encoder 1 input interrupt pin
-const int m1encoder2 = 16; // motor 1 encoder 2 input
-const int m2encoder1 = 15; // motor 2 encoder 1 input interrupt pin
-const int m2encoder2 = 17; // motor 2 encoder 2 input
+const int m1encoder1 = 16; // motor 1 encoder 1 input interrupt pin
+const int m1encoder2 = 25; // motor 1 encoder 2 input
+const int m2encoder1 = 17; // motor 2 encoder 1 input interrupt pin
+const int m2encoder2 = 15; // motor 2 encoder 2 input
 // Output pins:
 const int sensorLED1 = 6; // 1st diagnostic LED on sensor board
 const int lmotorDIR = 7; //Left motor dirn input 1
