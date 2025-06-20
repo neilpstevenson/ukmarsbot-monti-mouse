@@ -21,10 +21,9 @@ public:
 
   typedef struct  
     {
-      int positionLeft;
-      int positionRight;
-      int distanceLeft;
-      int distanceRight;
+      int position;
+      int distance;
+      int angle;
       SegmentDirection direction;
       int turn;
     } Segment;
@@ -38,11 +37,11 @@ private:
   int totalSegments;
   int currentSegment;
 
-  int lastPositionLeft;
-  int lastPositionRight;
+  int lastPosition;
+  int lastAngle;
 
-  int lastSegmentDeferredPositionLeft;
-  int lastSegmentDeferredPositionRight;
+  int lastSegmentDeferredPosition;
+  int lastSegmentDeferredAngle;
 
   // Edge detection helpers
   Debounce startFinish;
@@ -56,7 +55,7 @@ public:
 
   // Recorder
   void reset(bool pursuitMode);
-  void record(int radiusMarkerReading, int startStopMarkerReading, int positionLeft, int positionRight);
+  void record(int radiusMarkerReading, int startStopMarkerReading, int position, int angle);
   bool detectedEndMarker() const;
 
   // Playback
@@ -64,6 +63,7 @@ public:
   SegmentDirection getNextSegment();
   SegmentDirection peakNextSegment();
   int getSegmentDistance();
+  int getSegmentAngle();
   int getNextSegmentDistance();
   int getCurrentSegmentDistance();  // during record only
   bool isSegmentEndMarker();
@@ -82,8 +82,10 @@ PathRecorder::PathRecorder() :
     pursuitMode(false),
     totalSegments(0),
     currentSegment(0),
-    lastPositionLeft(0),
-    lastPositionRight(0),
+    lastPosition(0),
+    lastAngle(0),
+    lastSegmentDeferredPosition(0),
+    lastSegmentDeferredAngle(0),
     #if SENSOR_POLAIRTY_TRUE
     // New sensor board
     startFinish(markerLowThreshold, markerLowThreshold + 20, true),
@@ -100,22 +102,24 @@ void PathRecorder::reset(bool pursuitMode)
 {
   totalSegments = 0;
   currentSegment = 0;
-  lastPositionLeft = 0;
-  lastPositionRight = 0;
+  lastPosition = 0;
+  lastAngle = 0;
+  lastSegmentDeferredPosition = 0;
+  lastSegmentDeferredAngle = 0;
   this->pursuitMode = pursuitMode;
 }
 
-void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, int positionLeft, int positionRight)
+void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, int position, int angle)
 {
   // Record max/min to determine what happened after the marker
-  lastPositionLeft = positionLeft;
-  lastPositionRight = positionRight;
+  lastPosition = position;
+  lastAngle = angle;
 
   if(getCurrentSegmentDistance() < SEGMENT_START_DEFERRED_DISTANCE)
   {
     // Adjust after we've got a bit into the segment (straight or bend)
-    lastSegmentDeferredPositionLeft = positionLeft;
-    lastSegmentDeferredPositionRight = positionRight;
+    lastSegmentDeferredPosition = position;
+    lastSegmentDeferredAngle = angle;
     //SerialPort.print("Distance adjusted at ");
     //SerialPort.println(getCurrentSegmentDistance());
   }
@@ -126,7 +130,7 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
       {
         if(totalSegments > 1 && 
             segments[totalSegments-1].direction > endMark &&
-            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+            segments[totalSegments-1].position + CROSSOVER_TOLERANCE > position)
         {
           // Radius mark seen, but now realise it is actually a cross-over
           //
@@ -149,16 +153,16 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
             addSegment(crossOver);
             SerialPort.print("CROSS Start Pursuit at ");
           }
-          SerialPort.print(positionLeft);
+          SerialPort.print(position);
           SerialPort.print(",");
-          SerialPort.println(positionRight);
+          SerialPort.println(angle);
         }
       }
       else
       {
         if(totalSegments > 1 && 
             segments[totalSegments-1].direction > endMark &&
-            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+            segments[totalSegments-1].position + CROSSOVER_TOLERANCE > position)
         {
           // Radius mark seen, but now realise it is actually a cross-over
           //
@@ -181,9 +185,9 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
             addSegment(startMark);
             SerialPort.print("START at ");
           }
-          SerialPort.print(positionLeft);
+          SerialPort.print(position);
           SerialPort.print(",");
-          SerialPort.println(positionRight);
+          SerialPort.println(angle);
         }
       }
   }
@@ -196,7 +200,7 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
         // Could this be a cross-over?
         if(totalSegments > 1 && 
             (segments[totalSegments-1].direction <= endMark || segments[totalSegments-1].direction == crossOver) &&
-            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+            segments[totalSegments-1].position + CROSSOVER_TOLERANCE > position)
         {
           // Convert last mark to a cross-over mark
           segments[totalSegments-1].direction = crossOver;
@@ -205,7 +209,7 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
         else
         if(totalSegments == 1 && 
             (segments[totalSegments-1].direction <= endMark || segments[totalSegments-1].direction == crossOver) &&
-            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+            segments[totalSegments-1].position + CROSSOVER_TOLERANCE > position)
         {
           // Ignore initial crossover
           adjustSegmentDistances();
@@ -219,9 +223,9 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
           addSegment(rightTurn);    // Initial guess
 
           SerialPort.print("Radius at ");
-          SerialPort.print(positionLeft);
+          SerialPort.print(position);
           SerialPort.print(",");
-          SerialPort.println(positionRight);
+          SerialPort.println(angle);
         }
       }
       else
@@ -229,7 +233,7 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
         // Could this be a cross-over?
         if(totalSegments > 1 && 
             segments[totalSegments-1].direction <= endMark &&
-            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE > positionLeft)
+            segments[totalSegments-1].position + CROSSOVER_TOLERANCE > position)
         {
           // Convert last mark to a cross-over mark
           segments[totalSegments-1].direction = crossOver;
@@ -243,9 +247,9 @@ void PathRecorder::record(int radiusMarkerReading, int startStopMarkerReading, i
           addSegment(rightTurn);    // Initial guess
 
           SerialPort.print("Radius at ");
-          SerialPort.print(positionLeft);
+          SerialPort.print(position);
           SerialPort.print(",");
-          SerialPort.println(positionRight);
+          SerialPort.println(angle);
         }
       }
   }
@@ -267,14 +271,13 @@ void PathRecorder::addSegment(SegmentDirection direction)
 {
   if(totalSegments < MAX_SEGEMENTS-1)
   {
-    segments[totalSegments].positionLeft = lastPositionLeft;
-    segments[totalSegments].positionRight = lastPositionRight;
-    segments[totalSegments].distanceLeft = 0;
-    segments[totalSegments].distanceRight = 0;
+    segments[totalSegments].position = lastPosition;
+    segments[totalSegments].angle = 0;
+    segments[totalSegments].distance = 0;
     segments[totalSegments].direction = direction;
     currentSegment = totalSegments;
-    lastSegmentDeferredPositionLeft = lastPositionLeft;
-    lastSegmentDeferredPositionRight = lastPositionRight;
+    lastSegmentDeferredPosition = lastPosition;
+    lastSegmentDeferredAngle = lastAngle;
 
     ++totalSegments;
   }
@@ -285,24 +288,40 @@ void PathRecorder::adjustSegmentDistances()
   // Adjust the last segment to record how far it moved and which direction
   if(totalSegments)
   {
-    int distanceLeft = lastPositionLeft - lastSegmentDeferredPositionLeft;
-    int distanceRight = lastPositionRight - lastSegmentDeferredPositionRight;
-    segments[totalSegments-1].distanceLeft = distanceLeft;
-    segments[totalSegments-1].distanceRight = distanceRight;
+    int distance = lastPosition - lastSegmentDeferredPosition;
+    int angle = lastAngle - lastSegmentDeferredAngle;
+    while(angle > 360) { angle -= 360; }
+    while(angle <= -360) { angle += 360; }
+    segments[totalSegments-1].distance = distance;
+    segments[totalSegments-1].angle = angle;
+    int radius = MIN_RADIUS_FLAT_OUT;
+    // Estimate the radius of curvature
+    if(abs(angle) > STRAIGHT_LINE_TOLERANCE)
+    {
+      int circum = distance * (360/abs(angle));
+      radius = circum * 10 / 63;
+    }
     if(segments[totalSegments-1].direction > endMark && segments[totalSegments-1].direction != crossOver)
     {
-      //if(abs(distanceLeft - distanceRight) < STRAIGHT_LINE_TOLERANCE)
-      if(abs((distanceLeft + distanceRight)/(distanceLeft - distanceRight)) > STRAIGHT_LINE_TOLERANCE)
+      // if(abs((distanceLeft + distanceRight)/(distanceLeft - distanceRight)) > STRAIGHT_LINE_TOLERANCE)
+      //   segments[totalSegments-1].direction = forward;
+      // else
+      //   segments[totalSegments-1].direction = (distanceLeft > distanceRight) ? rightTurn : leftTurn;
+      if(radius >= MIN_RADIUS_FLAT_OUT)
         segments[totalSegments-1].direction = forward;
       else
-        segments[totalSegments-1].direction = (distanceLeft > distanceRight) ? rightTurn : leftTurn;
+        segments[totalSegments-1].direction = angle < 0 ? rightTurn : leftTurn;
     }
-    SerialPort.print("Adjusted dist ");
+    SerialPort.print("Adj dist->dist/ang/rad: ");
     printDirection(segments[totalSegments-1].direction);
     SerialPort.print(",");
     SerialPort.print(getCurrentSegmentDistance());
-    SerialPort.print("->");
-    SerialPort.println(getSegmentDistance());
+    SerialPort.print(" -> ");
+    SerialPort.print(getSegmentDistance());
+    SerialPort.print(",");
+    SerialPort.print(getSegmentAngle());
+    SerialPort.print(",");
+    SerialPort.println(radius);
   }
 }
 
@@ -336,8 +355,15 @@ int PathRecorder::getSegmentDistance()
   if(currentSegment >= totalSegments)
     return 0;
 
-  // Return the biggest of left/right
-  return segments[currentSegment].distanceLeft > segments[currentSegment].distanceRight ? segments[currentSegment].distanceLeft : segments[currentSegment].distanceRight;
+  return segments[currentSegment].distance;
+}
+
+int PathRecorder::getSegmentAngle()
+{
+  if(currentSegment >= totalSegments)
+    return 0;
+
+  return segments[currentSegment].angle;
 }
 
 int PathRecorder::getNextSegmentDistance()
@@ -346,7 +372,7 @@ int PathRecorder::getNextSegmentDistance()
     return 0;
 
   // Return the biggest of left/right
-  return segments[currentSegment+1].distanceLeft > segments[currentSegment+1].distanceRight ? segments[currentSegment+1].distanceLeft : segments[currentSegment+1].distanceRight;
+  return segments[currentSegment+1].distance;
 }
 
 int PathRecorder::getCurrentSegmentDistance()
@@ -354,10 +380,7 @@ int PathRecorder::getCurrentSegmentDistance()
   if(currentSegment >= totalSegments)
     return 0;
 
-  // Return the biggest of left/right
-  return lastPositionLeft - segments[currentSegment].positionLeft > lastPositionRight - segments[currentSegment].positionRight ? 
-        lastPositionLeft - segments[currentSegment].positionLeft : 
-        lastPositionRight - segments[currentSegment].positionRight;
+  return lastPosition - segments[currentSegment].position;
 }
 
 bool PathRecorder::isSegmentEndMarker()
@@ -375,12 +398,11 @@ void PathRecorder::printPath()
   SerialPort.println(" segments");
   for(int i = 0; i < totalSegments; i++)   
   {
-    SerialPort.print(i);                         SerialPort.print(",");
+    SerialPort.print(i);                     SerialPort.print(",");
     printDirection(segments[i].direction);   SerialPort.print(",");
-    SerialPort.print(segments[i].positionLeft);  SerialPort.print(",");
-    SerialPort.print(segments[i].positionRight); SerialPort.print(",");
-    SerialPort.print(segments[i].distanceLeft);  SerialPort.print(",");
-    SerialPort.print(segments[i].distanceRight);
+    SerialPort.print(segments[i].position);  SerialPort.print(",");
+    SerialPort.print(segments[i].angle);     SerialPort.print(",");
+    SerialPort.print(segments[i].distance);
     SerialPort.println();
   }
 }
@@ -430,6 +452,6 @@ bool PathRecorder::detectedEndMarker() const
   {
     return totalSegments > 1 && 
             segments[totalSegments-1].direction == endMark &&
-            segments[totalSegments-1].positionLeft + CROSSOVER_TOLERANCE < lastPositionLeft;
+            segments[totalSegments-1].position + CROSSOVER_TOLERANCE < lastPosition;
   }
 }

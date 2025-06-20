@@ -44,7 +44,7 @@ const uint8_t SENSOR_3 = A3;
 const int SERIAL_PORT_TX = 0;
 const int SERIAL_PORT_RX = 1;
 
-#define USE_USB_SERIAL_PORT
+//#define USE_USB_SERIAL_PORT
 
 #ifdef USE_USB_SERIAL_PORT
 static UART &SerialPort = Serial;    // USB Serial

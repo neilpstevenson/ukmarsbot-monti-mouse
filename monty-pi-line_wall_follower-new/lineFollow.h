@@ -7,10 +7,10 @@
 const int ACCELERATION_DISTANCE = 20;
 const int CORNER_APPROACH_SLOWDOWN = 0; //16; // Amount to slow down after a high speed section before hittind a corner
 //const int DECELERATION_DISTANCE = 200; //150;
-const float DECELERATION_FACTOR = 0.3;      // Distance allowed to ramp down the speed approaching a corner, in mm * speed
+const float DECELERATION_FACTOR = 0.15;      // Distance allowed to ramp down the speed approaching a corner, in mm * speed
 const float CORNER_DECL_COAST_FACTOR = 0.0; //4.0; // Distance after deceleration to coast to stabilise speed, in mm * speed
 const int CORNER_DECL_COAST_DISTANCE = 300; // Distance after deceleration to coast in mm
-const int STOP_DISTANCE = 80 - CROSSOVER_TOLERANCE;
+const int STOP_DISTANCE = 100 - CROSSOVER_TOLERANCE;
 const float PID_TURN_FACTOR = 0.005;  // Amount to multiply the PID turn result by speed difference of 64 - approx doubling of values from 64 to 255
 
 // PID values
@@ -28,6 +28,7 @@ int markerLowThreshold = defaultMarkerLowThreshold;
 // Log sensor state and current speeds
 void logFollowerState(int segment, float turn)
 {
+  /* TODO
   static bool logHeading = true;
   static const int logFreq = 0; //5;  // Number of loops between logs
   static int count = 0;
@@ -36,7 +37,7 @@ void logFollowerState(int segment, float turn)
     logHeading = false;
     SerialPort.println("seg,lf,rf,turn,lsp,rsp");
   }
-/*
+
   if(++count == logFreq)
   {
     count = 0;
@@ -67,6 +68,7 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
   motion.set_position(0);
   rotation.set_position(0);
   pathRecorder.reset(pursuitMode);
+  encoders.reset();
 
   // Start the controllers
   sensors.enable();
@@ -100,7 +102,7 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
 //    turn = constrain(turn * (1 + (basespeed - 64) * PID_TURN_FACTOR), -MAX_MOTOR_VOLTS, MAX_MOTOR_VOLTS);
 
     // Detect and record any markers found 
-    pathRecorder.record(sensors.see_left_wall?1000:0, sensors.see_right_wall?1000:0, motion.position(), motion.position());
+    pathRecorder.record(sensors.see_left_wall?1000:0, sensors.see_right_wall?1000:0, encoders.robot_distance(), encoders.robot_angle());
     //(int)(-encoder_l.count() * ENCODER_CALIBRATION), (int)(encoder_r.count() * ENCODER_CALIBRATION));
 
     // Set the motors to the default speed +/- turn
@@ -116,9 +118,8 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
     digitalWrite(indicatorLedBlue, pathRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
   
  //   logFollowerState(pathRecorder.currentSegmentNumber(), turn);
-SerialPort.println(rotation.position());
     count++;
-    delay(3);
+    delay(2);
   }
 
   endTime = millis();
@@ -174,13 +175,18 @@ SerialPort.println(rotation.position());
 
 //      logFollowerState(pathRecorder.currentSegmentNumber(), turn);
       
-      delay(3);
+      delay(2);
     }
     
     digitalWrite(indicatorLedBlue, LOW); // LED off
     
     SerialPort.println(F("Line track circuit completed"));
-    motors.stop();
+    motion.stop_move();
+    delay(100);
+    while(!motion.move_finished())
+    {
+      delay(2);
+    }
     sensors.disable();
     motion.reset_drive_system();
     motion.disable_drive();
@@ -226,11 +232,14 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
 
   // Reset everthing
   motion.set_position(0);
-  pathRecorder.reset(pursuitMode);
+  encoders.reset();
 
   // Start the controllers
   sensors.enable();
-  motion.reset_drive_system();
+  if(!pursuitMode)
+  {
+    motion.reset_drive_system();
+  }
   sensors.set_steering_mode(STEER_LINE_FOLLOW);
 
   startTime = millis();
@@ -262,7 +271,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
     //int leftPosition = (int)(-encoder_l.count() * ENCODER_CALIBRATION);
     //int rightPosition = (int)(encoder_r.count() * ENCODER_CALIBRATION);
     //playbackRecorder.record(sensors.see_left_wall, sensors.see_right_wall, leftPosition, rightPosition);
-    playbackRecorder.record(sensors.see_left_wall?1000:0, sensors.see_right_wall?1000:0, motion.position(), motion.position());
+    playbackRecorder.record(sensors.see_left_wall?1000:0, sensors.see_right_wall?1000:0, encoders.robot_distance(), encoders.robot_angle());
 
     // Adjust the segment number, if changed
     if(currentDirection != PathRecorder::SegmentDirection::endMark && pathRecorder.currentSegmentNumber() != playbackRecorder.currentSegmentNumber())
@@ -377,7 +386,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
 */
 
     count++;
-    delay(3);
+    delay(2);
   }
   
   endTime = millis();
@@ -417,13 +426,18 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
       
     //  logFollowerState(playbackRecorder.currentSegmentNumber(), turn);
       
-      delay(3);
+      delay(2);
     }
   
     digitalWrite(indicatorLedBlue, LOW); // LED off
     
-    SerialPort.println(F("Line track circuit completed"));
-    motors.stop();
+    SerialPort.println(F("Line track re-run complete"));
+    motion.stop_move();
+    delay(100);
+    while(!motion.move_finished())
+    {
+      delay(2);
+    }
     sensors.disable();
     motion.reset_drive_system();
     motion.disable_drive();
@@ -432,7 +446,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
   else
   {
     // Persuit mode
-    SerialPort.print("Pursuit mode ended");
+    SerialPort.print("Pursuit mode circuit complete");
     digitalWrite(indicatorLedBlue, LOW); // LED off
   }
 
@@ -440,7 +454,7 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
   SerialPort.print("Time mS: "); SerialPort.println(endTime-startTime);
   SerialPort.print("Loop: "); SerialPort.print(count);
   SerialPort.print(" ("); SerialPort.print(count/((endTime-startTime)/1000.0)); SerialPort.println("/sec)"); 
-  pathRecorder.printPath();
+  playbackRecorder.printPath();
 }
 
 

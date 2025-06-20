@@ -16,7 +16,8 @@ static const float motor_compensation_right = 1.00; //0.983;
 
 // Tolerances etc. all in mm
 const int CROSSOVER_TOLERANCE = 30;
-const int STRAIGHT_LINE_TOLERANCE = 4;
+const int STRAIGHT_LINE_TOLERANCE = 10;
+const int MIN_RADIUS_FLAT_OUT = 220;  // Go at full speed above this radius
 const int SEGMENT_START_DEFERRED_DISTANCE = 30; // We get this much into a segment before recording the distance (allows for straightening up etc)
 
 // PID max result
