@@ -1,39 +1,42 @@
 #pragma once
 
+//#define DEBUG_DELAYS
+
 static const float kp = 0.10;
 static const float kd = 0.015;
 
-static const float wall_follow_kp = 0.012;
-static const float wall_follow_kd = 0.001;
+// For simple wall follower
+static const float wall_follow_kp = 0.030 / 80.0; //0.018; //0.012;
+static const float wall_follow_kd = 0.004 / 80.0; //0.002;//0.001;
 
 static const float sensor_calibrate_l = 0.29;
 static const float sensor_calibrate_f = 0.40;
 static const float sensor_calibrate_r = 0.29;
 
-static const float encode_calibrate_l = -1.510; // smaller = bigger turns
-static const float encode_calibrate_r = 1.500;
+static const float encode_calibrate_l = -0.70; //-1.510; // smaller = bigger turns
+static const float encode_calibrate_r = 0.70; //1.500;
 
 static const float turn_left_angle_inertia_compensation = 0.8; // End the turns this much short, to allow for inertia taking it the rest of the way
 static const float turn_right_angle_inertia_compensation = 0.70; 
 static const float turn_right180_angle_inertia_compensation = 0.95;
 
-static const float turning_diameter_mm = 71.0;  // Bigger means turns more
+static const float turning_diameter_mm = 85.0;  // Bigger means turns more
 
 static const float wall_sensor_filter_ratio = 0.1;  // average = old * (1.0-ratio) + new * ratio
 
 static const int forward_speed = 64;
 static const int turn_leadin_speed = 48;
-static const int turn_speed = 32;
+static const int turn_speed = 48;
 static const int turn_leadout_speed = 48;
-static const int turn_180_speed = 32;
+static const int turn_180_speed = 48;
 
 // Distance parameters during wall follower
 static const int wall_follow_left_distance = 85; //90;
 static const int wall_follow_left_distance_min = 50;
-static const int wall_follow_forward_min_distance = 98; //90; //95;
+static const int wall_follow_forward_min_distance = 80; //98; //90; //95;
 static const int wall_follow_left_gap_threshold = 25;
 static const int wall_follow_right_gap_threshold = 25;
-static const int wall_follow_ahead_blocked_threshold = 40;
+static const int wall_follow_ahead_blocked_threshold = 25; //35;
 
 // Distances to move during various manoevres
 static const int wall_follow_move_left_initial_forward = 85;
@@ -50,9 +53,12 @@ static const int sensor_right_max_raw = 12000;
 
 // For simple follower
 const int wallFollowerTargetDistance = 360; 
-const int wallFollowerForwardAvoidDistance = 230; 
-const int wallFollowerLeftGapThreshold = 200; 
-const int wallFollowerLeftTurnDelay = 40;   // Loops before we turn, to prevent colliding with wall
+const int wallFollowerForwardAvoidDistance = 120;//150; //180; //230; 
+const int wallFollowerLeftGapThreshold = 150; //200; 
+const int wallFollowerLeftTurnDelay = 12;   // Counts before we turn, to prevent colliding with wall
+const float wallFollowerMaxPidTurn = 0.4F;   // Max turn as a % of the PID output
+const float wallFollowerLeftTurnInertiaCompensation = 0.30F;   // Reduce left turn radius by this amount to compensate for inertia/wheel slip
+const float wallFollowerSensorFilter = 0.5F;
 
 // General
 static const int loop_speed_ms = 2; // Plus ADC conversion times

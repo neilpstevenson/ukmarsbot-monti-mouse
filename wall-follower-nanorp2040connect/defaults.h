@@ -1,7 +1,7 @@
 #pragma once
 
 #define SENSOR_POLAIRTY_TRUE 0 // 1 = If WHITE is a higher value (i.e. Neil's compact sensor), otherwise 0 (the UKMARSBOT sensors)
-#define SERIAL_DEBUG_PORT 
+//#define SERIAL_DEBUG_PORT 
 //#define LOG_RAW_SENSORS
 
 const int MIN_BASE_SPEED = 40; //100;

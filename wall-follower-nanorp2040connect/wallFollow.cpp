@@ -5,7 +5,6 @@
 #include "pid.h"
 
 // Globals
-Motors motors;
 float wall_follow_error_filtered = 0.0;
 float lastDistL = 0.0;
 float lastDistR = 0.0;
@@ -37,22 +36,25 @@ static MODE_PROFILE_TABLE mode_profiles[] =
   // Classic maze - Green
   {
     // Ahead 
-    forward_speed,
+    forward_speed,                  // ahead_max_speed
+
     // Left
-    100, 50, // In Distances
-    turn_leadin_speed, turn_speed,
-    50,      // Out distance
-    turn_leadout_speed,
+    60, 40,                         // left_leadin_distance, left_leadin_distance_short
+    turn_leadin_speed, turn_speed,  // left_leadin_speed, left_turn_speed
+    50,                             // left_leadout_distance
+    turn_leadout_speed,             // left_leadout_speed
+
     // Right
-    40,    // In distance
-    turn_leadin_speed, turn_speed,
-    50,     // Out distance
-    turn_leadout_speed,
+    0,                              // right_leadin_distance
+    turn_leadin_speed, turn_speed,  // right_leadin_speed, right_leadout_distance
+    40,                             // right_leadout_distance
+    turn_leadout_speed,             // right_leadout_speed
+
     // About turn
-    40,   // In distance
-    turn_leadin_speed, turn_180_speed,
-    20,   // Out distance
-    turn_leadout_speed
+    40,                             // about_leadin_distance
+    turn_leadin_speed, turn_180_speed,  // about_leadin_speed, about_turn_speed
+    20,                             // about_leadout_distance
+    turn_leadout_speed              // about_leadout_speed
   },
   // Classic maze faster - Blue
   {
@@ -155,9 +157,11 @@ void forward_with_wall_follow(int distance, int speed)
 
 void turn_left_90(int speed)
 {
-//  motors.stop();
-//  delay(500);
- 
+#ifdef DEBUG_DELAYS
+  motors.stop();
+  delay(500);
+#endif
+
   // Rotate 90 degrees about left wheel
   float start_pos_l = encoder_l.count() * encode_calibrate_l;
   float start_pos_r = encoder_r.count() * encode_calibrate_r;
@@ -177,14 +181,19 @@ void turn_left_90(int speed)
     logSensors("LEFT90");
   }
 
+#ifdef DEBUG_DELAYS
   motors.stop();
   delay(400);
+#endif  
 }
 
 void turn_right_90(int speed)
 {
-//  motors.stop();
-//  delay(500);
+#ifdef DEBUG_DELAYS
+  motors.stop();
+  delay(500);
+#endif  
+
   // Rotate 90 degrees about right wheel
   float start_pos_l = encoder_l.count() * encode_calibrate_l;
   float start_pos_r = encoder_r.count() * encode_calibrate_r;
@@ -204,14 +213,18 @@ void turn_right_90(int speed)
     logSensors("RIGHT90");
   }
 
+#ifdef DEBUG_DELAYS
   motors.stop();
   delay(400);
+#endif  
 }
 
 void turn_right_180(int speed)
 {
+#ifdef DEBUG_DELAYS
   motors.stop();
   delay(100);
+#endif
 
   // Rotate 180 degrees about centre axis
   float start_pos_l = encoder_l.count() * encode_calibrate_l;
@@ -228,8 +241,10 @@ void turn_right_180(int speed)
     logSensors("RIGHT180");
   }
 
+#ifdef DEBUG_DELAYS
   motors.stop();
   delay(500);
+#endif  
 }
 
 
@@ -408,15 +423,17 @@ void testMovesForCalibrate()
 // Follow the left wall, return TRUE if successful
 bool FollowLeftWall()
 {
+    motors.begin();
+
     // Wait for button
-    buttonwait(50); // wait for function button to be pressed
+    //buttonwait(50); // wait for function button to be pressed
 
     // Ensure all LEDs off
     digitalWrite(sensorLED1, 0);
     digitalWrite(sensorLED2, 0);
     digitalWrite(indicatorLedBlue, 0);
 
-    delay(1000);
+    delay(500);
  
     //testMovesForCalibrate();
     //return false;
@@ -552,6 +569,9 @@ void simpleWallFollower(int basespeed)
 {
   int sensdiff = 0;
   int leftTurnCount = 0;
+  int leftTurnPosition = 0;
+
+  motors.begin();
 
   DebugPort.print("Wall Follower, speed: "); DebugPort.println(basespeed);
   
@@ -568,14 +588,15 @@ void simpleWallFollower(int basespeed)
   digitalWrite (indicatorLedBlue, LOW);
 
   // Set up motor direction
-  digitalWrite(rmotorDIR, HIGH); // set right motor forward
-  digitalWrite(lmotorDIR, LOW); // set left motor forward
+//  digitalWrite(rmotorDIR, HIGH); // set right motor forward
+//  digitalWrite(lmotorDIR, LOW); // set left motor forward
 
   // Forward to start line
   rightspeed = basespeed;
   leftspeed = basespeed;
-  analogWrite(rmotorPWM, rightspeed); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed); // set left motor speed
+  motors.forwardPower(basespeed);
+  //analogWrite(rmotorPWM, rightspeed); // set right motor speed
+  //analogWrite(lmotorPWM, leftspeed); // set left motor speed
 
   while(true)
   {
@@ -585,28 +606,31 @@ void simpleWallFollower(int basespeed)
     bool leftGap = lfrontsens < wallFollowerLeftGapThreshold;
 
     static float sensdiffFitered;
-    sensdiffFitered = sensdiffFitered * 0.5 + sensdiff * 0.5;
+    sensdiffFitered = sensdiffFitered * (1.0 - wallFollowerSensorFilter) + sensdiff * wallFollowerSensorFilter;
 
     //DebugPort.println(lfrontsens);
     //DebugPort.println(sensdiff);
 
     // Push through PID controller
     pidInput = sensdiffFitered;
-    float turn = steeringPID.compute();
+    float turn = steeringPID.compute() * basespeed;
 
     // Set the motors to the default speed +/- turn
     if(!leftGap)
     {
       if(!forwardBlocked)
       {
-        // Limit the turn to 20%
-        turn = std::max(std::min(turn, 0.2F), -0.2F);
+        // Forward
+        //
+        // Limit the turn to +/-35%
+        turn = std::max(std::min(turn, wallFollowerMaxPidTurn), -wallFollowerMaxPidTurn);
         // Keep on following left wall
         rightspeed = int(basespeed * (1 + turn));
         leftspeed = int(basespeed * (1 - turn));
 
         // We've seen a wall, reset the coast counter
         leftTurnCount = 0;
+        leftTurnPosition = encoder_l.count();;
 
         digitalWrite (sensorLED1, LOW);  // Right/Red LED
         digitalWrite (sensorLED2, LOW);   // Left/Green LED
@@ -615,22 +639,24 @@ void simpleWallFollower(int basespeed)
       else
       {
         // Blocked ahead - turn right
-        rightspeed = -int(basespeed * 0.8);
-        leftspeed = int(basespeed * 0.9);
+        rightspeed = -int(basespeed * 1.4);// 0.8);
+        leftspeed = int(basespeed * 0.4); //0.8);
 
         // May need a very short turn
         leftTurnCount = wallFollowerLeftTurnDelay;
+        leftTurnPosition = encoder_l.count();
 
         digitalWrite (sensorLED1, HIGH);  // Right/Red LED
         digitalWrite (sensorLED2, LOW);   // Left/Green LED
         digitalWrite (indicatorLedBlue, LOW);  // Centre/Blue LED
       }
     }
-    else if(++leftTurnCount <= wallFollowerLeftTurnDelay)
+//    else if(++leftTurnCount <= wallFollowerLeftTurnDelay)
+    else if(leftTurnPosition - wallFollowerLeftTurnDelay /*wallFollowerLeftTurnDelay*/ <= encoder_l.count())
     {
       // Gap on left, but keep going ahead a small amount first
       // slightly right
-      rightspeed = int(basespeed * 0.95);
+      rightspeed = int(basespeed);// * 0.95);
       leftspeed = int(basespeed);
 
       digitalWrite (sensorLED1, LOW);  // Right/Red LED
@@ -640,8 +666,17 @@ void simpleWallFollower(int basespeed)
     else
     {
       // Gap on left, turn into it now
-      rightspeed = int(basespeed * 1.3);
-      leftspeed = int(basespeed * 0.2);
+
+      // We want a constant velocity, so
+      // Vright = V + V/R.d/2   where V is forward velocity, R the requred turning radius and d the mouse effective diameter
+      // and
+      // Vleft = V - V/R.d/2
+      // If R is 90 and r is 40 then 
+      // Vleft = 0.555V and Vright = 1.444V
+      float vr = 1 + 1/(90.0 - basespeed * wallFollowerLeftTurnInertiaCompensation) * turning_diameter_mm/2;
+      float vl = 1 - 1/(90.0 - basespeed * wallFollowerLeftTurnInertiaCompensation) * turning_diameter_mm/2;
+      rightspeed = int(basespeed * vr);
+      leftspeed = int(basespeed * vl);
 
       digitalWrite (sensorLED1, LOW);  // Right/Red LED
       digitalWrite (sensorLED2, HIGH);   // Left/Green LED
@@ -649,6 +684,9 @@ void simpleWallFollower(int basespeed)
     }
 
     // Update motors
+    motors.right.setPower(rightspeed);
+    motors.left.setPower(-leftspeed);
+/*    
     if(rightspeed >= 0)
     {
       digitalWrite(rmotorDIR, HIGH); // set right motor forward
@@ -670,7 +708,7 @@ void simpleWallFollower(int basespeed)
       digitalWrite(lmotorDIR, HIGH); // set left motor reverse
       analogWrite(lmotorPWM, -leftspeed); // set left motor speed
     }
-
+*/
     delay(3);
   }
 }

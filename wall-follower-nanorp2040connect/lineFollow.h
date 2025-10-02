@@ -9,7 +9,7 @@ const int CORNER_APPROACH_SLOWDOWN = 0; //16; // Amount to slow down after a hig
 const float DECELERATION_FACTOR = 0.3;      // Distance allowed to ramp down the speed approaching a corner, in mm * speed
 const float CORNER_DECL_COAST_FACTOR = 0.0; //4.0; // Distance after deceleration to coast to stabilise speed, in mm * speed
 const int CORNER_DECL_COAST_DISTANCE = 300; // Distance after deceleration to coast in mm
-const int STOP_DISTANCE = 80 - CROSSOVER_TOLERANCE;
+const int STOP_DISTANCE = 80; // - CROSSOVER_TOLERANCE;
 const float PID_TURN_FACTOR = 0.005;  // Amount to multiply the PID turn result by speed difference of 64 - approx doubling of values from 64 to 255
 
 // PID values

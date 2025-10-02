@@ -25,3 +25,9 @@ const int sensorLED2 = 11; // 2nd diagnostic LED on sensor board
 const int trigger = 12; // trigger for sensor LEDs
 const int indicatorLedBlue = 13; // ext LED (blue on MontiPi)
 
+// Motor pinout in raw RP2040 numbering
+const int lmotorDIR_GPIO = 19; //Left motor dirn input 1
+const int rmotorDIR_GPIO = 21; //8; //Right motor dirn input 3
+const int lmotorPWM_GPIO = 20; //9; //Left motor PWN pin
+const int rmotorPWM_GPIO = 5; //Right motor PWN pin
+

@@ -9,6 +9,7 @@
 #include "wallFollow.h"
 #include "lineFollow.h"
 #include "calibrate.h"
+#include "motors.h"
 
 int basespeed = MIN_BASE_SPEED; //Base speed (constant)
 
@@ -28,6 +29,7 @@ int fnswvalue = 0; // value (in range 0 to 16) of 4 way function switch
 int posn = 0; // if on line or off it and which side
 
 //Motor variables
+Motors motors;
 int rightspeed = 0; //Right motor speed
 int leftspeed = 0; //Left motor speed
 
@@ -44,10 +46,10 @@ void setup()
   Serial.println("Monty Pi\nLine Follower and Wall Follower");
   Serial1.println("Monty Pi\nLine Follower and Wall Follower");
 
-  pinMode(lmotorDIR, OUTPUT);
-  pinMode(rmotorDIR, OUTPUT);
-  pinMode(lmotorPWM, OUTPUT);
-  pinMode(rmotorPWM, OUTPUT);
+//  pinMode(lmotorDIR, OUTPUT);
+//  pinMode(rmotorDIR, OUTPUT);
+//  pinMode(lmotorPWM, OUTPUT);
+//  pinMode(rmotorPWM, OUTPUT);
   pinMode(sensorLED1, OUTPUT);
   pinMode(sensorLED2, OUTPUT);
   pinMode(trigger, OUTPUT);
@@ -352,12 +354,15 @@ void showMode(int mode)
 
 void loop() 
 {
-  int mode = buttonPressed() ? 1 : 0;
+  int mode = 0;
+  showMode(mode);
+  delay(400);
+  mode = buttonPressed() ? 1 : 0;
   showMode(mode);
   // If pressed for a bit longer, set into mode 2
   if(mode)
   {
-    delay(1000);
+    delay(500);
     if(buttonPressed())
       mode++;
     showMode(mode);
@@ -434,6 +439,7 @@ void loop()
         lineFollower(basespeed, true);
         break; 
       case 2:
+        //FollowLeftWall();
         simpleWallFollower(basespeed);
         break; 
     }

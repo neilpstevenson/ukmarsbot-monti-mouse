@@ -5,6 +5,7 @@
 #include "pid.h"
 #include "pathRecorder.h"
 
+// Globals
 unsigned long int endTime = 0;
 unsigned long int startTime = 0;
 int markerLowThreshold = defaultMarkerLowThreshold;
@@ -52,8 +53,8 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
   pathRecorder.reset(pursuitMode);
 
   // Set up motor direction
-  digitalWrite(rmotorDIR, HIGH); // set right motor forward
-  digitalWrite(lmotorDIR, LOW); // set left motor forward
+  //digitalWrite(rmotorDIR, HIGH); // set right motor forward
+  //digitalWrite(lmotorDIR, LOW); // set left motor forward
 
   startTime = millis();
   unsigned long int count = 0;
@@ -61,8 +62,9 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
   // Forward to start line
   rightspeed = basespeed;
   leftspeed = basespeed;
-  analogWrite(rmotorPWM, rightspeed); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed); // set left motor speed
+  motors.forwardPower(basespeed);
+  //analogWrite(rmotorPWM, rightspeed); // set right motor speed
+  //analogWrite(lmotorPWM, leftspeed); // set left motor speed
 
   while(!pathRecorder.detectedEndMarker())
   {
@@ -87,8 +89,10 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
     rightspeed = int(basespeed * (1 + turn));
     leftspeed = int(basespeed * (1 - turn));
   
-    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+    motors.setMotorPowers(leftspeed >= 0 ? leftspeed : 0, rightspeed >= 0 ? rightspeed : 0);
+    
+    //analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+    //analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, pathRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
@@ -144,8 +148,10 @@ void followAndRecordPath(PathRecorder &pathRecorder, int basespeed, int slowdown
       // Set the motors to the default speed +/- turn
       rightspeed = int(slowdownSpeed * (1 + turn));
       leftspeed = int(slowdownSpeed * (1 - turn));
-      analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-      analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+      motors.setMotorPowers(leftspeed >= 0 ? leftspeed : 0, rightspeed >= 0 ? rightspeed : 0);
+      
+      //analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+      //analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
       logFollowerState(pathRecorder.currentSegmentNumber(), turn);
       
@@ -199,8 +205,8 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
   encoder_r.reset_count();
 
   // Set up motor direction
-  digitalWrite(rmotorDIR, HIGH); // set right motor forward
-  digitalWrite(lmotorDIR, LOW); // set left motor forward
+  //digitalWrite(rmotorDIR, HIGH); // set right motor forward
+  //digitalWrite(lmotorDIR, LOW); // set left motor forward
 
   startTime = millis();
   unsigned long int count = 0;
@@ -211,8 +217,10 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
   // Forward to start line
   rightspeed = currentSpeed;
   leftspeed = currentSpeed;
-  analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-  analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+  motors.setMotorPowers(leftspeed >= 0 ? leftspeed : 0, rightspeed >= 0 ? rightspeed : 0);
+  
+  //analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+  //analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
   PathRecorder::SegmentDirection currentDirection = pathRecorder.getFirstSegment();
   PathRecorder::SegmentDirection nextDirection = pathRecorder.peakNextSegment();
@@ -321,8 +329,10 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
     rightspeed = int(currentSpeed * (1 + turn));
     leftspeed = int(currentSpeed * (1 - turn));
  
-    analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-    analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+    motors.setMotorPowers(leftspeed >= 0 ? leftspeed : 0, rightspeed >= 0 ? rightspeed : 0);
+    
+    //analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+    //analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
 
     // Put LED into state according to how many markers seen
     digitalWrite(indicatorLedBlue, playbackRecorder.currentSegmentNumber() % 2 ? LOW : HIGH); // toggle LED
@@ -374,8 +384,10 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
       // Set the motors to the default speed +/- turn
       rightspeed = slowdownSpeed * (1 + turn);
       leftspeed = slowdownSpeed * (1 - turn);
-      analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
-      analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
+      motors.setMotorPowers(leftspeed >= 0 ? leftspeed : 0, rightspeed >= 0 ? rightspeed : 0);
+      
+      //analogWrite(rmotorPWM, rightspeed >= 0 ? std::min(255,rightspeed) : 0); // set right motor speed
+      //analogWrite(lmotorPWM, leftspeed >= 0 ? std::min(255,leftspeed) : 0); // set left motor speed
       
       logFollowerState(playbackRecorder.currentSegmentNumber(), turn);
       
@@ -403,6 +415,8 @@ void replayRecordedPath(PathRecorder &pathRecorder, int forwardSpeed, int corner
 
 void lineFollower(int basespeed, bool pursuitMode)
 {
+    motors.begin();
+
     // Initial run
     PathRecorder pathRecorder;
     followAndRecordPath(pathRecorder, basespeed, (int)(basespeed*SLOWDOWN_SPEED_RATIO), pursuitMode);
@@ -416,7 +430,7 @@ void lineFollower(int basespeed, bool pursuitMode)
       }
       batterycheck();
       functionswitch(); // read function switch value after button released
-      int fastRunSpeed = fnswvalue * 17;
+      int fastRunSpeed = fnswvalue * 10;  // 25% increase
       if(fastRunSpeed <= basespeed)
         fastRunSpeed = basespeed + 17;
       //delay(2000);
